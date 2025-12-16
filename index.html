@@ -145,8 +145,8 @@
 
         <div class="flex flex-col items-center justify-center mb-6">
             <!-- Logo Image -->
- <img src="logo.jpg"
-     alt="Logo Pointage" 
+            <img src="logo.png" 
+                 alt="Logo Pointage" 
                  class="h-48 w-auto object-contain mb-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
                  onerror="this.style.display='none'; document.getElementById('fallback-logo-icon').classList.remove('hidden');">
             
@@ -825,11 +825,13 @@
             };
 
             const punchInDate = buildDate(dateStr, inStr);
-            const punchOutDate = buildDate(dateStr, outStr);
+            let punchOutDate = buildDate(dateStr, outStr);
 
+            // Gestion automatique des horaires de nuit
             if (punchOutDate && punchOutDate < punchInDate) {
-                alert("L'heure de départ ne peut pas être avant l'arrivée.");
-                return;
+                // Si l'heure de sortie est avant l'heure d'entrée (ex: 20:00 -> 03:00), 
+                // on considère que c'est le lendemain.
+                punchOutDate.setDate(punchOutDate.getDate() + 1);
             }
 
             const data = {
@@ -1145,6 +1147,15 @@
         }
 
         // --- EXCEL EXPORT ---
+        // Helper: Get ISO Week Number
+        const getWeekNumber = (d) => {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            return weekNo;
+        };
+
         window.exportToExcel = () => {
             const wb = XLSX.utils.book_new();
             if (employees.length === 0 && punches.length === 0) { alert('Aucune donnée.'); return; }
@@ -1152,6 +1163,7 @@
             const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4472C4" } }, alignment: { horizontal: "center" } };
             const cellStyle = { alignment: { horizontal: "center" } };
             const weeklyHeaderStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "70AD47" } }, alignment: { horizontal: "center" } }; 
+            const monthlyHeaderStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "ED7D31" } }, alignment: { horizontal: "center" } };
 
             const summaryData = [
                 [{v: 'Sommaire', s: { font: { bold: true, sz: 14 } }}], 
@@ -1191,13 +1203,39 @@
                 const rows = [];
                 const headers = [{v: 'Date', s: headerStyle}, {v: 'Arrivée', s: headerStyle}, {v: 'Départ', s: headerStyle}, {v: 'Pause (min)', s: headerStyle}, {v: 'Net', s: headerStyle}];
 
+                // Préparation des données mensuelles jusqu'en 2035
+                const monthlyAggregates = {};
+                const currentYear = new Date().getFullYear();
+                const endYear = 2035;
+
+                for (let y = currentYear; y <= endYear; y++) {
+                    for (let m = 0; m < 12; m++) {
+                        // Clé format YYYY-MM
+                        let key = `${y}-${String(m+1).padStart(2, '0')}`;
+                        monthlyAggregates[key] = {
+                            totalMs: 0,
+                            h_norm: 0,
+                            h_10: 0,
+                            h_20: 0,
+                            h_50: 0
+                        };
+                    }
+                }
+
                 empPunches.forEach(p => {
                     const pi = p.punchInTime.toDate();
                     const po = p.punchOutTime ? p.punchOutTime.toDate() : null;
                     const breakMins = p.breakDuration || 0;
                     let netDurText = 'N/A';
                     if (po) {
-                        netDurText = formatDuration(Math.max(0, (po.getTime() - pi.getTime()) - (breakMins * 60000)));
+                        const netMs = Math.max(0, (po.getTime() - pi.getTime()) - (breakMins * 60000));
+                        netDurText = formatDuration(netMs);
+                        
+                        // Ajout au total mensuel brut (basé sur la date de pointage)
+                        let mKey = `${pi.getFullYear()}-${String(pi.getMonth()+1).padStart(2, '0')}`;
+                        if (monthlyAggregates[mKey]) {
+                            monthlyAggregates[mKey].totalMs += netMs;
+                        }
                     }
                     rows.push([{v: pi.toLocaleDateString(), s: cellStyle}, {v: pi.toLocaleTimeString(), s: cellStyle}, {v: po ? po.toLocaleTimeString() : 'En cours', s: cellStyle}, {v: breakMins, s: cellStyle}, {v: netDurText, s: { ...cellStyle, font: { bold: true, color: { rgb: "2F5597" } } }}]);
                 });
@@ -1226,7 +1264,8 @@
                 weeklyRows.push(['', '', '', '', '']); 
                 weeklyRows.push([{v: 'RÉCAPITULATIF HEBDOMADAIRE & HEURES SUP.', s: {font: {bold: true, sz: 12, color: {rgb: "2F5597"}}}}]);
                 weeklyRows.push([
-                    {v: 'Semaine du (Lundi)', s: weeklyHeaderStyle}, 
+                    {v: 'Semaine du (Lundi)', s: weeklyHeaderStyle},
+                    {v: 'N° Sem', s: weeklyHeaderStyle},  
                     {v: 'Total Heures', s: weeklyHeaderStyle}, 
                     {v: 'Normales (≤35h)', s: weeklyHeaderStyle}, 
                     {v: 'HS 10% (36-39h)', s: weeklyHeaderStyle}, 
@@ -1237,7 +1276,8 @@
                 Object.keys(weeklyData).sort().forEach(key => {
                     const totalMs = weeklyData[key];
                     const totalHours = totalMs / (1000 * 60 * 60); 
-                    
+                    const weekNum = getWeekNumber(new Date(key));
+
                     let h_norm = 0, h_10 = 0, h_20 = 0, h_50 = 0;
                     let remainder = totalHours;
 
@@ -1265,10 +1305,21 @@
                         h_50 = remainder;
                     }
 
+                    // On ajoute ces HS calculées au mois correspondant à la semaine (Lundi)
+                    let wDate = new Date(key);
+                    let mKey = `${wDate.getFullYear()}-${String(wDate.getMonth()+1).padStart(2, '0')}`;
+                    if (monthlyAggregates[mKey]) {
+                        monthlyAggregates[mKey].h_norm += h_norm;
+                        monthlyAggregates[mKey].h_10 += h_10;
+                        monthlyAggregates[mKey].h_20 += h_20;
+                        monthlyAggregates[mKey].h_50 += h_50;
+                    }
+
                     const fmtNum = (n) => ({ v: Number(n.toFixed(2)), t: 'n', s: cellStyle });
 
                     weeklyRows.push([
                         {v: new Date(key).toLocaleDateString(), s: cellStyle},
+                        {v: weekNum, s: cellStyle},
                         {v: formatDuration(totalMs), s: { ...cellStyle, font: {bold: true} }},
                         fmtNum(h_norm),
                         fmtNum(h_10),
@@ -1277,12 +1328,51 @@
                     ]);
                 });
 
+                // Construction de la section Mensuelle
+                const monthlyRows = [];
+                monthlyRows.push(['', '', '', '', '']);
+                monthlyRows.push([{v: 'PRÉVISIONNEL MENSUEL (JUSQU\'EN 2035)', s: {font: {bold: true, sz: 12, color: {rgb: "ED7D31"}}}}]);
+                monthlyRows.push([
+                    {v: 'Mois', s: monthlyHeaderStyle},
+                    {v: 'Total Heures', s: monthlyHeaderStyle},
+                    {v: 'Normales Cumulées', s: monthlyHeaderStyle},
+                    {v: 'HS 10% Cumulées', s: monthlyHeaderStyle},
+                    {v: 'HS 20% Cumulées', s: monthlyHeaderStyle},
+                    {v: 'HS 50% Cumulées', s: monthlyHeaderStyle}
+                ]);
+
+                const fmtNum = (n) => ({ v: Number(n.toFixed(2)), t: 'n', s: cellStyle });
+                
+                let currentYearHeader = null;
+
+                Object.keys(monthlyAggregates).sort().forEach(mKey => {
+                    const data = monthlyAggregates[mKey];
+                    const [year, month] = mKey.split('-');
+
+                    // Séparation par année pour lisibilité
+                    if (currentYearHeader !== year) {
+                        currentYearHeader = year;
+                        monthlyRows.push(['']); 
+                        monthlyRows.push([{v: `ANNÉE ${year}`, s: {font: {bold: true, sz: 12}, fill: {fgColor: {rgb: "FCE4D6"}}}}]);
+                    }
+
+                    monthlyRows.push([
+                        {v: mKey, s: cellStyle},
+                        {v: formatDuration(data.totalMs), s: { ...cellStyle, font: {bold: true} }},
+                        fmtNum(data.h_norm),
+                        fmtNum(data.h_10),
+                        fmtNum(data.h_20),
+                        fmtNum(data.h_50)
+                    ]);
+                });
+
                 const finalSheetData = [
                     [{v: `Feuille: ${emp.name}`, s: {font: {bold: true, sz: 14}}}], 
                     [''], 
                     [...headers], 
                     ...rows,       
-                    ...weeklyRows 
+                    ...weeklyRows,
+                    ...monthlyRows
                 ];
 
                 const ws = XLSX.utils.aoa_to_sheet(finalSheetData);
@@ -1293,6 +1383,7 @@
                     {wch: 15}, 
                     {wch: 15}, 
                     {wch: 15}, 
+                    {wch: 15},
                     {wch: 15}  
                 ];
                 
@@ -1304,5 +1395,3 @@
     </script>
 </body>
 </html>
-
-
