@@ -139,6 +139,34 @@
             opacity: 1;
             bottom: 50px;
         }
+        
+        /* Logo Upload Styles */
+        .logo-container {
+            position: relative;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .logo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        .logo-container:hover .logo-overlay {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -153,17 +181,31 @@
         <div id="error-banner-container"></div>
 
         <div class="flex flex-col items-center justify-center mb-6">
-            <!-- Logo Image -->
-            <img src="logo.jpg" 
-                 alt="Logo Pointage" 
-                 class="h-48 w-auto object-contain mb-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
-                 onerror="this.style.display='none'; document.getElementById('fallback-logo-icon').classList.remove('hidden');">
+            <!-- Hidden File Input for Logo -->
+            <input type="file" id="logo-upload-input" accept="image/*" class="hidden" onchange="handleLogoUpload(this)">
             
-            <!-- Fallback Icon -->
-            <div id="fallback-logo-icon" class="hidden bg-blue-50 p-4 rounded-full mb-4 text-blue-600 border border-blue-100 shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+            <!-- Logo Image Container with Click-to-Edit -->
+            <div class="logo-container mb-4" onclick="document.getElementById('logo-upload-input').click()" title="Cliquez pour changer le logo">
+                <img id="app-logo" src="logo.png" 
+                     alt="Logo Pointage" 
+                     class="h-48 w-auto object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+                     onerror="this.style.display='none'; document.getElementById('fallback-logo-icon').classList.remove('hidden');">
+                
+                <!-- Fallback Icon (also clickable) -->
+                <div id="fallback-logo-icon" class="hidden bg-blue-50 p-4 rounded-full text-blue-600 border border-blue-100 shadow-sm cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <div class="text-xs text-center mt-1 font-bold">Ajouter Logo</div>
+                </div>
+                
+                <!-- Hover Overlay -->
+                <div class="logo-overlay">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
             </div>
 
             <h1 class="text-3xl font-bold text-gray-800 text-center">Système de Pointage d'Heure</h1>
@@ -594,6 +636,14 @@
 
         // INIT
         window.onload = async () => {
+            // NEW: Load custom logo if exists
+            const savedLogo = localStorage.getItem('appLogo');
+            if(savedLogo) {
+                document.getElementById('app-logo').src = savedLogo;
+                document.getElementById('app-logo').style.display = 'block';
+                document.getElementById('fallback-logo-icon').classList.add('hidden');
+            }
+
             try {
                 if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
                       document.getElementById('connection-status').textContent = "⚠️ CONFIGURATION MANQUANTE";
@@ -640,6 +690,36 @@
                 document.getElementById('connection-status').textContent = "Erreur de Connexion";
                 handleFirebaseError(error);
             }
+        };
+
+        // NEW: Handle Logo Upload
+        window.handleLogoUpload = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                
+                // Update UI
+                const logoImg = document.getElementById('app-logo');
+                const fallback = document.getElementById('fallback-logo-icon');
+                
+                logoImg.src = base64;
+                logoImg.style.display = 'block';
+                fallback.classList.add('hidden');
+                
+                // Save to Storage
+                try {
+                    localStorage.setItem('appLogo', base64);
+                    showToast("Nouveau logo enregistré !");
+                } catch(e) {
+                    if(e.name === 'QuotaExceededError') {
+                        alert("L'image est trop volumineuse pour être sauvegardée. Essayez une image plus petite.");
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
         };
 
         async function fetchAdminCode() {
@@ -1082,4 +1162,3 @@
     </script>
 </body>
 </html>
-
