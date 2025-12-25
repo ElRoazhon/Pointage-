@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Application de Pointage d'Heure</title>
+    
+    <!-- Méta-données pour PWA (Progressive Web App) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pointage">
+    <meta name="application-name" content="Pointage">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Placeholders pour les icônes (seront mis à jour dynamiquement par le JS) -->
+    <link rel="icon" type="image/png" id="dynamic-favicon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
+    <link rel="apple-touch-icon" id="dynamic-apple-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
+    <link rel="manifest" id="dynamic-manifest">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
@@ -45,6 +59,8 @@
             font-family: 'Inter', sans-serif;
             background-color: #f7f7f9;
             touch-action: manipulation; 
+            /* Empêcher le "pull-to-refresh" sur mobile qui fait moche en app */
+            overscroll-behavior-y: none;
         }
         .container-card {
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05), 0 0 10px rgba(0, 0, 0, 0.03);
@@ -167,6 +183,21 @@
         .logo-container:hover .logo-overlay {
             opacity: 1;
         }
+        
+        /* Loading spinner for logo */
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -188,17 +219,22 @@
             <div class="logo-container mb-4" onclick="document.getElementById('logo-upload-input').click()" title="Cliquez pour changer le logo">
                 <img id="app-logo" src="logo.png" 
                      alt="Logo Pointage" 
-                     class="h-48 w-auto object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+                     class="h-48 w-auto object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 hidden"
                      onerror="this.style.display='none'; document.getElementById('fallback-logo-icon').classList.remove('hidden');">
                 
                 <!-- Fallback Icon (also clickable) -->
-                <div id="fallback-logo-icon" class="hidden bg-blue-50 p-4 rounded-full text-blue-600 border border-blue-100 shadow-sm cursor-pointer">
+                <div id="fallback-logo-icon" class="bg-blue-50 p-4 rounded-full text-blue-600 border border-blue-100 shadow-sm cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                     <div class="text-xs text-center mt-1 font-bold">Ajouter Logo</div>
                 </div>
                 
+                <!-- Loading State -->
+                <div id="logo-loading" class="hidden absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center rounded-lg">
+                    <div class="loading-spinner"></div>
+                </div>
+
                 <!-- Hover Overlay -->
                 <div class="logo-overlay">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -414,6 +450,48 @@
         </div>
     </div>
 
+    <!-- NEW: Modal for Manual Time Entry -->
+    <div id="manual-time-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col h-auto max-h-screen overflow-y-auto">
+            <h3 id="manual-time-title" class="text-xl font-bold mb-6 text-gray-800 text-center">Confirmation Horaire</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-600 mb-2">Date</label>
+                <input type="date" id="manual-punch-date" class="w-full p-4 border-2 border-gray-200 rounded-lg text-center text-lg focus:border-blue-500 focus:ring-blue-500 outline-none transition-colors">
+            </div>
+
+            <!-- NEW TIME PICKER UI -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-600 mb-2">Heure</label>
+                <div class="flex items-center justify-between mb-2 select-none">
+                    <button onclick="adjustTime(-60)" class="h-12 w-12 rounded-lg bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 border border-gray-200 flex items-center justify-center active:bg-gray-300">-1h</button>
+                    <button onclick="adjustTime(-5)" class="h-12 w-12 rounded-lg bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 border border-gray-200 flex items-center justify-center active:bg-gray-300">-5m</button>
+                    
+                    <!-- The Input (Maintained for logic but styled to fit) -->
+                    <input type="time" id="manual-punch-time" class="mx-2 flex-grow p-3 border-2 border-blue-100 rounded-lg text-center text-3xl font-bold text-blue-800 focus:border-blue-500 outline-none">
+                    
+                    <button onclick="adjustTime(5)" class="h-12 w-12 rounded-lg bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 border border-gray-200 flex items-center justify-center active:bg-gray-300">+5m</button>
+                    <button onclick="adjustTime(60)" class="h-12 w-12 rounded-lg bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 border border-gray-200 flex items-center justify-center active:bg-gray-300">+1h</button>
+                </div>
+                <button onclick="setManualToNow()" class="w-full py-2 text-xs font-bold text-blue-500 uppercase tracking-wide hover:bg-blue-50 rounded transition-colors">Remettre à maintenant</button>
+            </div>
+
+            <div id="manual-break-container" class="mb-6 hidden">
+                <label class="block text-sm font-bold text-gray-600 mb-2">Pause (minutes)</label>
+                <div class="flex items-center select-none">
+                    <button onclick="adjustBreak(-5)" class="p-4 bg-gray-100 rounded-l-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16">-</button>
+                    <input type="number" id="manual-punch-break" value="0" min="0" class="w-full p-4 border-y-2 border-gray-200 text-center text-xl font-bold">
+                    <button onclick="adjustBreak(5)" class="p-4 bg-gray-100 rounded-r-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16">+</button>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 mt-2">
+                <button onclick="closeManualTimeModal()" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-600 font-medium hover:bg-gray-50 transition-colors">Annuler</button>
+                <button onclick="confirmManualPunch()" class="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors">Valider</button>
+            </div>
+        </div>
+    </div>
+
     <!-- NEW: Punch Success Modal -->
     <div id="punch-success-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-md">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden transform transition-all scale-105">
@@ -473,33 +551,6 @@
                 <button onclick="document.getElementById('manual-correction-modal').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
                 <button onclick="saveManualPunch()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Enregistrer</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal for Break Time Input -->
-    <div id="break-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full flex flex-col h-auto max-h-screen overflow-y-auto">
-            <h3 class="text-xl font-bold mb-4 text-gray-800 text-center">Départ de Shift</h3>
-            <p class="mb-4 text-gray-600 text-center">Temps de pause (minutes)</p>
-            <div class="flex items-center justify-center mb-6">
-                <input id="break-minutes" type="text" readonly value="0" class="w-24 p-3 border-2 border-blue-200 rounded-lg text-3xl text-center font-bold text-blue-800 bg-white" placeholder="0">
-                <span class="ml-2 text-gray-500 font-medium text-xl">min</span>
-            </div>
-            <div class="numpad-grid select-none mb-4">
-                <div onclick="typeNum('break-minutes', '1')" class="numpad-btn">1</div>
-                <div onclick="typeNum('break-minutes', '2')" class="numpad-btn">2</div>
-                <div onclick="typeNum('break-minutes', '3')" class="numpad-btn">3</div>
-                <div onclick="typeNum('break-minutes', '4')" class="numpad-btn">4</div>
-                <div onclick="typeNum('break-minutes', '5')" class="numpad-btn">5</div>
-                <div onclick="typeNum('break-minutes', '6')" class="numpad-btn">6</div>
-                <div onclick="typeNum('break-minutes', '7')" class="numpad-btn">7</div>
-                <div onclick="typeNum('break-minutes', '8')" class="numpad-btn">8</div>
-                <div onclick="typeNum('break-minutes', '9')" class="numpad-btn">9</div>
-                <div onclick="clearNum('break-minutes')" class="numpad-btn clear-btn">C</div>
-                <div onclick="typeNum('break-minutes', '0')" class="numpad-btn">0</div>
-                <div id="break-modal-confirm" class="numpad-btn action-btn bg-blue-600 text-white border-blue-600">OK</div>
-            </div>
-            <button onclick="hideBreakModal()" class="w-full text-gray-500 font-medium py-2 hover:text-gray-700 border rounded-lg">Annuler</button>
         </div>
     </div>
 
@@ -636,14 +687,6 @@
 
         // INIT
         window.onload = async () => {
-            // NEW: Load custom logo if exists
-            const savedLogo = localStorage.getItem('appLogo');
-            if(savedLogo) {
-                document.getElementById('app-logo').src = savedLogo;
-                document.getElementById('app-logo').style.display = 'block';
-                document.getElementById('fallback-logo-icon').classList.add('hidden');
-            }
-
             try {
                 if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
                       document.getElementById('connection-status').textContent = "⚠️ CONFIGURATION MANQUANTE";
@@ -692,34 +735,59 @@
             }
         };
 
-        // NEW: Handle Logo Upload
+        // NEW: Helper to resize and compress image
+        function resizeAndCompressImage(file, maxWidth, quality, callback) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Compress to JPEG with specified quality (0.0 to 1.0)
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    callback(dataUrl);
+                };
+            };
+        }
+
+        // NEW: Handle Logo Upload - Save to Firestore
         window.handleLogoUpload = (input) => {
             const file = input.files[0];
             if (!file) return;
+            
+            // Show loading
+            document.getElementById('logo-loading').classList.remove('hidden');
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64 = e.target.result;
-                
-                // Update UI
-                const logoImg = document.getElementById('app-logo');
-                const fallback = document.getElementById('fallback-logo-icon');
-                
-                logoImg.src = base64;
-                logoImg.style.display = 'block';
-                fallback.classList.add('hidden');
-                
-                // Save to Storage
-                try {
-                    localStorage.setItem('appLogo', base64);
-                    showToast("Nouveau logo enregistré !");
+            // Resize to max 400px width, 70% quality JPEG
+            resizeAndCompressImage(file, 400, 0.7, async (compressedBase64) => {
+                 try {
+                    // Save to Firestore shared settings
+                    await setDoc(getDocRef('settings', 'branding'), { 
+                        logoBase64: compressedBase64,
+                        updatedAt: serverTimestamp()
+                    });
+                    showToast("Nouveau logo partagé enregistré !");
                 } catch(e) {
-                    if(e.name === 'QuotaExceededError') {
-                        alert("L'image est trop volumineuse pour être sauvegardée. Essayez une image plus petite.");
-                    }
+                    console.error("Erreur logo:", e);
+                    alert("Erreur lors de la sauvegarde du logo: " + e.message);
+                } finally {
+                    document.getElementById('logo-loading').classList.add('hidden');
                 }
-            };
-            reader.readAsDataURL(file);
+            });
         };
 
         async function fetchAdminCode() {
@@ -732,8 +800,65 @@
             } catch (e) { console.log("Utilisation du code défaut.", e); }
         }
 
+        // NEW: Function to dynamically update App Icons/Manifest
+        function updateAppIcons(base64Image) {
+            if (!base64Image) return;
+
+            // 1. Update standard Favicon
+            const linkIcon = document.getElementById('dynamic-favicon');
+            if (linkIcon) linkIcon.href = base64Image;
+
+            // 2. Update Apple Touch Icon
+            const linkApple = document.getElementById('dynamic-apple-icon');
+            if (linkApple) linkApple.href = base64Image;
+
+            // 3. Generate Dynamic Manifest for Android "Add to Home Screen"
+            const manifest = {
+                "name": "Application Pointage",
+                "short_name": "Pointage",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#ffffff",
+                "theme_color": "#2563eb",
+                "icons": [
+                    {
+                        "src": base64Image,
+                        "sizes": "192x192",
+                        "type": "image/png"
+                    },
+                    {
+                        "src": base64Image,
+                        "sizes": "512x512",
+                        "type": "image/png"
+                    }
+                ]
+            };
+
+            const stringManifest = JSON.stringify(manifest);
+            const blob = new Blob([stringManifest], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(blob);
+            
+            const linkManifest = document.getElementById('dynamic-manifest');
+            if (linkManifest) linkManifest.href = manifestURL;
+        }
+
         function startDataListeners() {
             if (!isAuthReady) return;
+            
+            // LISTEN TO LOGO UPDATES
+            onSnapshot(getDocRef('settings', 'branding'), (doc) => {
+                if(doc.exists() && doc.data().logoBase64) {
+                    const logoImg = document.getElementById('app-logo');
+                    const fallback = document.getElementById('fallback-logo-icon');
+                    logoImg.src = doc.data().logoBase64;
+                    logoImg.classList.remove('hidden');
+                    fallback.classList.add('hidden');
+                    
+                    // NEW: Update Favicons and Manifest dynamically
+                    updateAppIcons(doc.data().logoBase64);
+                }
+            });
+
             onSnapshot(getColRef('employees'), (snapshot) => {
                 employees = [];
                 const empSelect = document.getElementById('admin-correction-employee');
@@ -1092,6 +1217,11 @@
         };
         showView('punch');
 
+        // --- NEW: MANUAL TIME MODAL VARIABLES ---
+        let currentPunchMode = null; // 'IN' or 'OUT'
+        let currentManualEmployee = null;
+        let currentManualPunchDoc = null;
+
         // --- PUNCH ---
         window.handlePunch = async () => {
             const code = document.getElementById('employee-code').value;
@@ -1109,27 +1239,139 @@
             try {
                 const s = await getDocs(query(getColRef('punches'), where('employeeCode', '==', code)));
                 const active = s.docs.filter(d=>d.data().punchOutTime===null).sort((a,b)=>b.data().punchInTime.toMillis()-a.data().punchInTime.toMillis())[0];
-                if(active) { currentActivePunchDoc=active; currentEmployeeForPunch=emp; showBreakModal(); }
-                else {
-                    await addDoc(getColRef('punches'), { employeeCode: code, employeeName: emp.name, punchInTime: serverTimestamp(), punchOutTime: null, breakDuration: 0 });
-                    // NEW: Show Modal instead of text
-                    showSuccessModal(`Bonjour ${emp.name} ! Pointage enregistré.`);
-                    displayEmployeeStatus(emp); document.getElementById('employee-code').value='';
+                
+                // NEW LOGIC: Open Manual Time Modal instead of direct write
+                if(active) { 
+                    // PUNCH OUT FLOW
+                    openManualTimeModal('OUT', emp, active);
+                } else {
+                    // PUNCH IN FLOW
+                    openManualTimeModal('IN', emp, null);
                 }
             } catch(e) { console.error(e); }
         };
 
-        let currentActivePunchDoc, currentEmployeeForPunch;
-        const breakModal = document.getElementById('break-modal-backdrop');
-        function showBreakModal() { document.getElementById('break-minutes').value='0'; breakModal.classList.remove('hidden'); breakModal.classList.add('flex'); }
-        window.hideBreakModal = () => { breakModal.classList.add('hidden'); breakModal.classList.remove('flex'); };
-        document.getElementById('break-modal-confirm').onclick = async () => {
-             if(!currentActivePunchDoc) return;
-             await updateDoc(currentActivePunchDoc.ref, { punchOutTime: serverTimestamp(), breakDuration: parseInt(document.getElementById('break-minutes').value)||0 });
-             // NEW: Show Modal instead of text
-             showSuccessModal(`Au revoir ${currentEmployeeForPunch.name} ! Dépointage enregistré.`);
-             displayEmployeeStatus(currentEmployeeForPunch); document.getElementById('employee-code').value=''; hideBreakModal();
+        // --- NEW: Manual Time Modal Functions ---
+        window.openManualTimeModal = (mode, employee, punchDoc) => {
+            currentPunchMode = mode;
+            currentManualEmployee = employee;
+            currentManualPunchDoc = punchDoc;
+
+            const modal = document.getElementById('manual-time-modal');
+            const title = document.getElementById('manual-time-title');
+            const dateInput = document.getElementById('manual-punch-date');
+            const timeInput = document.getElementById('manual-punch-time');
+            const breakContainer = document.getElementById('manual-break-container');
+
+            // Set current time as default
+            const now = new Date();
+            dateInput.value = now.toISOString().split('T')[0];
+            timeInput.value = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+
+            if (mode === 'IN') {
+                title.textContent = `Bonjour ${employee.name} (Arrivée)`;
+                breakContainer.classList.add('hidden');
+            } else {
+                title.textContent = `Au revoir ${employee.name} (Départ)`;
+                breakContainer.classList.remove('hidden');
+                document.getElementById('manual-punch-break').value = 0;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Clear PIN
+            document.getElementById('employee-code').value = '';
         };
+
+        window.closeManualTimeModal = () => {
+            document.getElementById('manual-time-modal').classList.add('hidden');
+            document.getElementById('manual-time-modal').classList.remove('flex');
+            currentPunchMode = null;
+            currentManualEmployee = null;
+            currentManualPunchDoc = null;
+        };
+        
+        window.adjustBreak = (amount) => {
+            const input = document.getElementById('manual-punch-break');
+            let val = parseInt(input.value) || 0;
+            val = Math.max(0, val + amount);
+            input.value = val;
+        };
+
+        // NEW: Adjust Time function for quick buttons
+        window.adjustTime = (minutes) => {
+            const input = document.getElementById('manual-punch-time');
+            if (!input.value) return;
+            
+            const [h, m] = input.value.split(':').map(Number);
+            const date = new Date();
+            date.setHours(h);
+            date.setMinutes(m + minutes);
+            
+            const newH = String(date.getHours()).padStart(2, '0');
+            const newM = String(date.getMinutes()).padStart(2, '0');
+            input.value = `${newH}:${newM}`;
+        };
+
+        window.setManualToNow = () => {
+            const now = new Date();
+            const input = document.getElementById('manual-punch-time');
+            input.value = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+            // Update date to today as well just in case they changed days
+            document.getElementById('manual-punch-date').value = now.toISOString().split('T')[0];
+        };
+
+        window.confirmManualPunch = async () => {
+            if (!currentManualEmployee) return;
+
+            const dateStr = document.getElementById('manual-punch-date').value;
+            const timeStr = document.getElementById('manual-punch-time').value;
+            
+            if (!dateStr || !timeStr) {
+                alert("Veuillez remplir la date et l'heure.");
+                return;
+            }
+
+            const dateTime = new Date(`${dateStr}T${timeStr}:00`);
+            const breakDuration = parseInt(document.getElementById('manual-punch-break').value) || 0;
+
+            try {
+                if (currentPunchMode === 'IN') {
+                    // Create New Punch
+                    await addDoc(getColRef('punches'), { 
+                        employeeCode: currentManualEmployee.code, 
+                        employeeName: currentManualEmployee.name, 
+                        punchInTime: Timestamp.fromDate(dateTime), 
+                        punchOutTime: null, 
+                        breakDuration: 0 
+                    });
+                    showSuccessModal(`Bonjour ${currentManualEmployee.name} ! Pointage enregistré.`);
+                } else if (currentPunchMode === 'OUT' && currentManualPunchDoc) {
+                    // Update Existing Punch
+                    // Ensure punch OUT is after punch IN if same day (basic check)
+                    // We allow crossing midnight, so simpler check is mostly UI side
+                    await updateDoc(currentManualPunchDoc.ref, { 
+                        punchOutTime: Timestamp.fromDate(dateTime), 
+                        breakDuration: breakDuration 
+                    });
+                    showSuccessModal(`Au revoir ${currentManualEmployee.name} ! Dépointage enregistré.`);
+                }
+                
+                displayEmployeeStatus(currentManualEmployee);
+                closeManualTimeModal();
+
+            } catch (e) {
+                console.error("Erreur pointage manuel:", e);
+                alert("Erreur: " + e.message);
+            }
+        };
+
+        // --- Existing Break Modal (Legacy) - Kept hidden but functionally replaced ---
+        let currentActivePunchDoc;
+        const breakModal = document.getElementById('break-modal-backdrop');
+        function showBreakModal() { /* Legacy function - not called anymore */ }
+        window.hideBreakModal = () => { breakModal.classList.add('hidden'); breakModal.classList.remove('flex'); };
 
         async function displayEmployeeStatus(emp) {
              const s = document.getElementById('current-user-status');
