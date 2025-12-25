@@ -16,6 +16,7 @@
     <!-- Placeholders pour les icônes (seront mis à jour dynamiquement par le JS) -->
     <link rel="icon" type="image/png" id="dynamic-favicon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
     <link rel="apple-touch-icon" id="dynamic-apple-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕒</text></svg>">
+    <!-- Utilisation de data-uri pour le manifest pour une meilleure compatibilité Chrome Android -->
     <link rel="manifest" id="dynamic-manifest">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -126,7 +127,6 @@
             color: #64748b;
             transition: color 0.2s, transform 0.2s;
         }
-        /* Item centered via JS logic class if needed, or relying on visual center */
         
         .numpad-grid {
             display: grid;
@@ -642,7 +642,8 @@
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    // Use PNG to preserve transparency
+                    const dataUrl = canvas.toDataURL('image/png');
                     callback(dataUrl);
                 };
             };
@@ -677,10 +678,26 @@
             if (linkIcon) linkIcon.href = base64Image;
             const linkApple = document.getElementById('dynamic-apple-icon');
             if (linkApple) linkApple.href = base64Image;
-            const manifest = { "name": "Application Pointage", "short_name": "Pointage", "start_url": ".", "display": "standalone", "background_color": "#ffffff", "theme_color": "#2563eb", "icons": [ { "src": base64Image, "sizes": "192x192", "type": "image/png" }, { "src": base64Image, "sizes": "512x512", "type": "image/png" } ] };
-            const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            
+            const manifest = { 
+                "name": "Pointage", 
+                "short_name": "Pointage", 
+                "start_url": window.location.href, // Dynamic URL
+                "display": "standalone", 
+                "background_color": "#ffffff", 
+                "theme_color": "#2563eb", 
+                "icons": [ 
+                    { "src": base64Image, "sizes": "192x192", "type": "image/png" }, 
+                    { "src": base64Image, "sizes": "512x512", "type": "image/png" } 
+                ] 
+            };
+            
+            // Encode manifest in Data URI to bypass Blob restrictions on some browsers
+            const stringManifest = JSON.stringify(manifest);
+            const manifestDataUri = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(stringManifest);
+            
             const linkManifest = document.getElementById('dynamic-manifest');
-            if (linkManifest) linkManifest.href = URL.createObjectURL(blob);
+            if (linkManifest) linkManifest.setAttribute('href', manifestDataUri);
         }
 
         function startDataListeners() {
