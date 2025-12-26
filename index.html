@@ -236,11 +236,39 @@
         @keyframes progress { from { width: 100%; } to { width: 0%; } }
         .progress-bar { animation: progress 5s linear forwards; }
         
-        /* Table Preview Styles */
-        .preview-header { background-color: #FFC000; font-weight: bold; text-align: center; font-size: 0.75rem; border: 1px solid #e2e8f0; padding: 8px 4px; }
-        .preview-cell { text-align: center; font-size: 0.8rem; border: 1px solid #e2e8f0; padding: 6px 2px; }
-        .preview-week-row { background-color: #FFFF00; font-weight: bold; color: #DC2626; text-align: center; }
-        .preview-total-row { background-color: #FFF2CC; font-weight: bold; text-align: center; font-size: 0.75rem; }
+        /* Table Preview Styles - AGRANDI ET CLARIFIÉ */
+        .preview-header { 
+            background-color: #FFC000; 
+            font-weight: bold; 
+            text-align: center; 
+            font-size: 0.85rem; /* Augmenté */
+            border: 1px solid #94a3b8; /* Bordure plus visible */
+            padding: 12px 6px; /* Plus d'espace */
+            color: #0f172a;
+            white-space: nowrap; /* Évite les retours à la ligne moches */
+        }
+        .preview-cell { 
+            text-align: center; 
+            font-size: 0.95rem; /* Augmenté pour lisibilité */
+            border: 1px solid #cbd5e1; 
+            padding: 12px 6px; /* Plus d'espace pour le doigt */
+            color: #334155;
+            white-space: nowrap;
+        }
+        .preview-week-row { 
+            background-color: #FFFF00; 
+            font-weight: bold; 
+            color: #DC2626; 
+            text-align: center;
+            font-size: 0.9rem;
+            padding: 8px;
+        }
+        .preview-total-row { 
+            background-color: #FFF2CC; 
+            font-weight: bold; 
+            text-align: center; 
+            font-size: 0.85rem; 
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -395,7 +423,8 @@
                             Retour
                         </button>
                     </div>
-                    <div class="overflow-x-auto border border-gray-300 rounded-lg shadow-inner bg-gray-50 max-h-[500px]">
+                    <!-- Hauteur augmentée à h-[70vh] pour une meilleure vue sur mobile/tablette -->
+                    <div class="overflow-auto border border-gray-300 rounded-lg shadow-inner bg-white h-[70vh]">
                         <table class="min-w-full border-collapse">
                             <thead class="sticky top-0 z-10 shadow-sm">
                                 <tr>
