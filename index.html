@@ -236,6 +236,12 @@
         /* Success Animation */
         @keyframes progress { from { width: 100%; } to { width: 0%; } }
         .progress-bar { animation: progress 5s linear forwards; }
+        
+        /* Table Preview Styles */
+        .preview-header { background-color: #FFC000; font-weight: bold; text-align: center; font-size: 0.75rem; border: 1px solid #e2e8f0; padding: 8px 4px; }
+        .preview-cell { text-align: center; font-size: 0.8rem; border: 1px solid #e2e8f0; padding: 6px 2px; }
+        .preview-week-row { background-color: #FFFF00; font-weight: bold; color: #DC2626; text-align: center; }
+        .preview-total-row { background-color: #FFF2CC; font-weight: bold; text-align: center; font-size: 0.75rem; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -255,7 +261,6 @@
             
             <!-- Logo Image Container with Click-to-Edit -->
             <div class="logo-container mb-4" onclick="document.getElementById('logo-upload-input').click()" title="Cliquez pour changer le logo">
-                <!-- IMPORTANT: Removed inline error handler that sets display:none permanently -->
                 <img id="app-logo" src="logo.png" 
                      alt="Logo Pointage" 
                      class="h-48 w-auto object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 hidden">
@@ -342,6 +347,23 @@
         <div id="view-admin" class="view-content hidden">
             <!-- (Contenu Admin inchangé, masqué pour brièveté du diff, mais inclus dans le fichier complet) -->
             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Gestion du Personnel</h2>
+             
+             <!-- NEW: Month Picker for Preview & Export -->
+            <div class="mb-6 bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Mois à visualiser / exporter :</label>
+                    <input type="month" id="admin-month-picker" class="p-2 border rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium" onchange="renderMonthPreview()">
+                </div>
+                <div>
+                     <button onclick="exportToExcel()" class="btn-primary bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Télécharger Excel
+                    </button>
+                </div>
+            </div>
+
              <!-- Manual Correction Tool -->
              <div class="mb-10 p-6 bg-white rounded-lg shadow-sm border border-orange-200">
                 <div class="flex items-center justify-between mb-4">
@@ -385,6 +407,7 @@
                     </table>
                 </div>
             </div>
+
             <!-- Add Employee Form -->
             <div class="p-6 bg-gray-50 rounded-lg border mb-8">
                 <h3 class="text-xl font-medium mb-4 text-gray-700">Ajouter un Nouvel Employé</h3>
@@ -395,6 +418,7 @@
                 </div>
                 <p id="admin-message" class="mt-2 text-sm text-red-600 h-5"></p>
             </div>
+
             <!-- Employee List -->
             <h3 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Liste des Employés</h3>
             <div id="employee-list-container" class="overflow-x-auto mb-8">
@@ -403,24 +427,44 @@
                     <tbody id="employee-table-body" class="bg-white divide-y divide-gray-200"></tbody>
                 </table>
             </div>
-            <!-- Export -->
+
+            <!-- PREVIEW EXCEL TABLE -->
             <div class="mt-10 mb-10">
-                <h3 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Exportation Comptable</h3>
-                <div class="bg-white p-6 rounded-lg border border-blue-200 shadow-sm">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Sélectionner le mois à exporter :</label>
-                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                        <input type="month" id="export-month-picker" class="p-2 border rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700">
-                        <button onclick="exportToExcel()" class="btn-primary bg-yellow-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-yellow-600 flex items-center justify-center border border-orange-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Générer Excel (HCR + Totaux)</button>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2 italic">Format: Hôtellerie Restauration (HS 10%, 20%, 50%). Palette Jaune/Orange.</p>
+                <h3 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Aperçu Tableau Comptable
+                </h3>
+                
+                <div id="preview-records-container" class="overflow-x-auto max-h-[600px] border border-gray-300 rounded-lg shadow-inner bg-gray-50">
+                    <table class="min-w-full border-collapse">
+                        <thead class="sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="preview-header">Sem</th>
+                                <th class="preview-header">Date</th>
+                                <th class="preview-header">Arr M</th>
+                                <th class="preview-header">Dep M</th>
+                                <th class="preview-header">Pau M</th>
+                                <th class="preview-header">Tot M</th>
+                                <th class="preview-header">Arr S</th>
+                                <th class="preview-header">Dep S</th>
+                                <th class="preview-header">Pau S</th>
+                                <th class="preview-header">Tot S</th>
+                                <th class="preview-header">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="preview-table-body" class="bg-white">
+                            <tr><td colspan="11" class="text-center py-8 text-gray-500 italic">Chargement des données...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div id="punch-records-container" class="overflow-x-auto max-h-96 mt-6">
-                    <table class="min-w-full divide-y divide-gray-200 border border-gray-100"><thead class="sticky top-0 bg-gray-100 shadow-sm z-10"><tr><th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Employé</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Arrivée</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Départ</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Pause</th><th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Total Net</th></tr></thead><tbody id="punch-table-body" class="bg-white divide-y divide-gray-200"><tr><td colspan="5" class="text-center py-4 text-gray-500">En attente de connexion base de données...</td></tr></tbody></table>
-                </div>
+
                 <div class="mt-4 flex justify-end">
                     <button onclick="resetAllPunches()" class="text-red-600 hover:text-red-800 text-sm font-medium flex items-center border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-2 rounded shadow-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Réinitialiser tout l'historique</button>
                 </div>
             </div>
+
             <!-- Admin Settings -->
             <div class="mt-12 p-6 bg-gray-100 rounded-lg border border-gray-200">
                 <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>Paramètres Administrateur</h3>
@@ -614,7 +658,7 @@
                 const today = new Date();
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
-                document.getElementById('export-month-picker').value = `${yyyy}-${mm}`;
+                document.getElementById('admin-month-picker').value = `${yyyy}-${mm}`;
 
             } catch (error) {
                 console.error("Erreur Firebase:", error);
@@ -737,23 +781,26 @@
                 if(currentEditVal) editEmpSelect.value = currentEditVal;
                 renderEmployeeTable();
                 loadCorrectionData();
+                renderMonthPreview(); // Update preview when employees change
             }, (error) => handleFirebaseError(error));
 
             const q = query(getColRef('punches'), orderBy('punchInTime', 'desc'));
             onSnapshot(q, (snapshot) => {
                 punches = [];
                 snapshot.forEach(doc => { punches.push({ id: doc.id, ...doc.data() }); });
-                renderPunchTable();
+                // We no longer render simple punch table, we render preview table
                 loadCorrectionData();
+                renderMonthPreview(); // Update preview when punches change
             }, (error) => handleFirebaseError(error));
         }
 
         function handleFirebaseError(error) { console.error("Erreur détectée:", error); }
 
-        // --- EXCEL EXPORT (Unchanged) ---
+        // --- EXCEL EXPORT ---
         const getWeekNumber = (d) => { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7)); var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1)); return Math.ceil((((d - yearStart) / 86400000) + 1)/7); };
+        
         window.exportToExcel = () => {
-            const monthPicker = document.getElementById('export-month-picker');
+            const monthPicker = document.getElementById('admin-month-picker');
             const selectedMonthVal = monthPicker.value;
             if (!selectedMonthVal) { alert("Veuillez sélectionner un mois."); return; }
             if (employees.length === 0 && punches.length === 0) { alert('Aucune donnée.'); return; }
@@ -764,10 +811,12 @@
             const cellStyle = { alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const totalRowStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFF2CC" } }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const weekSummaryStyle = { font: { bold: true, color: { rgb: "FF0000" } }, fill: { fgColor: { rgb: "FFFF00" } }, alignment: { horizontal: "center" }, border: { top: {style:'medium'}, bottom: {style:'medium'}, left: {style:'medium'}, right: {style:'medium'} } };
+            
             employees.forEach(emp => {
                 const rows = [];
                 rows.push([{v: 'N° Semaine', s: headerStyle},{v: 'Date', s: headerStyle},{v: 'Arrivée M', s: headerStyle},{v: 'Départ M', s: headerStyle},{v: 'Pause M', s: headerStyle},{v: 'Total M', s: headerStyle},{v: 'Arrivée S', s: headerStyle},{v: 'Départ S', s: headerStyle},{v: 'Pause S', s: headerStyle},{v: 'Total S', s: headerStyle},{v: 'Total Jour', s: headerStyle}]);
                 let currentWeekNum = null; let weeklyTotalMs = 0;
+                
                 const pushWeekSummary = (weekNum) => {
                      const totalHours = weeklyTotalMs / (1000 * 60 * 60); let h_norm = 0, h_10 = 0, h_20 = 0, h_50 = 0; let remainder = totalHours;
                      if (remainder <= 35) { h_norm = remainder; remainder = 0; } else { h_norm = 35; remainder -= 35; }
@@ -779,21 +828,30 @@
                      rows.push([{v: 'Détail HS (HCR):', s: totalRowStyle},{v: `Normales: ${Number(h_norm.toFixed(2))}h`, s: totalRowStyle},{v: `HS 10%: ${Number(h_10.toFixed(2))}h`, s: totalRowStyle},{v: '', s: totalRowStyle},{v: `HS 20%: ${Number(h_20.toFixed(2))}h`, s: totalRowStyle},{v: '', s: totalRowStyle},{v: `HS 50%: ${Number(h_50.toFixed(2))}h`, s: totalRowStyle},{v: '', s: totalRowStyle},{v: '', s: totalRowStyle},{v: '', s: totalRowStyle},{v: '', s: totalRowStyle}]);
                      rows.push([null]); 
                 };
+                
                 for (let d = 1; d <= daysInMonth; d++) {
                     const dateObj = new Date(selYear, selMonth - 1, d); const weekNum = getWeekNumber(dateObj); const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
                     if (currentWeekNum !== null && weekNum !== currentWeekNum) { pushWeekSummary(currentWeekNum); weeklyTotalMs = 0; }
                     currentWeekNum = weekNum;
+                    
                     const dayKey = `${selYear}-${String(selMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                     const dayPunches = punches.filter(p => { if (p.employeeCode !== emp.code || !p.punchInTime) return false; const pDate = p.punchInTime.toDate(); const pKey = `${pDate.getFullYear()}-${String(pDate.getMonth()+1).padStart(2,'0')}-${String(pDate.getDate()).padStart(2,'0')}`; return pKey === dayKey; });
                     dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
+                    
                     let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; let duration1 = 0, duration2 = 0;
                     if (dayPunches.length > 0) {
                         const p1 = dayPunches[0]; const p1In = p1.punchInTime.toDate(); const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; const p1Break = p1.breakDuration || 0;
                         arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; pauseM = p1Break > 0 ? p1Break : "";
                         if(p1Out) { duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - (p1Break * 60000)); totM = formatDuration(duration1); }
+                        
                         if (dayPunches.length > 1) {
                             const p2 = dayPunches[1]; const p2In = p2.punchInTime.toDate(); const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; const p2Break = p2.breakDuration || 0;
-                            arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); depM = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; pauseS = p2Break > 0 ? p2Break : "";
+                            arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                            
+                            // *** BUG FIX HERE: was depM ***
+                            depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; 
+                            
+                            pauseS = p2Break > 0 ? p2Break : "";
                             if(p2Out) { duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - (p2Break * 60000)); totS = formatDuration(duration2); }
                         }
                         totalDailyStr = formatDuration(duration1 + duration2); weeklyTotalMs += (duration1 + duration2);
@@ -805,6 +863,110 @@
             });
             XLSX.writeFile(wb, `Pointage_HCR_${selectedMonthVal}.xlsx`);
         };
+
+        // --- PREVIEW RENDER FUNCTION ---
+        window.renderMonthPreview = () => {
+             const monthPicker = document.getElementById('admin-month-picker');
+             const selectedMonthVal = monthPicker.value;
+             const tbody = document.getElementById('preview-table-body');
+             tbody.innerHTML = '';
+
+             if (!selectedMonthVal || employees.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-gray-500 italic">Veuillez sélectionner un mois et avoir des employés.</td></tr>';
+                 return;
+             }
+
+             const [selYear, selMonth] = selectedMonthVal.split('-').map(Number);
+             const daysInMonth = new Date(selYear, selMonth, 0).getDate();
+
+             employees.forEach(emp => {
+                // Header for Employee
+                const empHeaderRow = document.createElement('tr');
+                empHeaderRow.innerHTML = `<td colspan="11" class="bg-gray-100 font-bold text-gray-800 p-2 text-left border-b border-t border-gray-300 pl-4 mt-4">${emp.name} (${emp.code})</td>`;
+                tbody.appendChild(empHeaderRow);
+
+                let currentWeekNum = null; 
+                let weeklyTotalMs = 0;
+
+                const pushWeekSummary = (weekNum) => {
+                     const totalHours = weeklyTotalMs / (1000 * 60 * 60);
+                     const totalStr = formatDuration(weeklyTotalMs);
+                     const row = document.createElement('tr');
+                     row.innerHTML = `<td class="preview-week-row">TOT SEM ${weekNum}</td><td colspan="8"></td><td class="preview-week-row">TOT HEBDO</td><td class="preview-week-row">${totalStr}</td>`;
+                     tbody.appendChild(row);
+                };
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateObj = new Date(selYear, selMonth - 1, d);
+                    const weekNum = getWeekNumber(dateObj);
+                    const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
+
+                    if (currentWeekNum !== null && weekNum !== currentWeekNum) {
+                        pushWeekSummary(currentWeekNum);
+                        weeklyTotalMs = 0;
+                    }
+                    currentWeekNum = weekNum;
+
+                    const dayKey = `${selYear}-${String(selMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const dayPunches = punches.filter(p => { 
+                        if (p.employeeCode !== emp.code || !p.punchInTime) return false;
+                        const pDate = p.punchInTime.toDate();
+                        const pKey = `${pDate.getFullYear()}-${String(pDate.getMonth()+1).padStart(2,'0')}-${String(pDate.getDate()).padStart(2,'0')}`;
+                        return pKey === dayKey; 
+                    });
+                    
+                    dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
+
+                    let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; 
+                    let duration1 = 0, duration2 = 0;
+
+                    if (dayPunches.length > 0) {
+                        const p1 = dayPunches[0]; 
+                        const p1In = p1.punchInTime.toDate(); 
+                        const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; 
+                        const p1Break = p1.breakDuration || 0;
+                        arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                        depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
+                        pauseM = p1Break > 0 ? p1Break : "";
+                        if(p1Out) { duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - (p1Break * 60000)); totM = formatDuration(duration1); }
+
+                        if (dayPunches.length > 1) {
+                            const p2 = dayPunches[1]; 
+                            const p2In = p2.punchInTime.toDate(); 
+                            const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; 
+                            const p2Break = p2.breakDuration || 0;
+                            arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                            depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
+                            pauseS = p2Break > 0 ? p2Break : "";
+                            if(p2Out) { duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - (p2Break * 60000)); totS = formatDuration(duration2); }
+                        }
+                        totalDailyStr = formatDuration(duration1 + duration2); 
+                        weeklyTotalMs += (duration1 + duration2);
+                    }
+
+                    // Only show rows that have data to save space, OR show all? User said "preview excel table", Excel shows all days.
+                    // Showing all days creates a huge scroll. Let's show only days with data OR empty rows if needed.
+                    // For better UX, let's show all days so they can see "absences".
+                    const tr = document.createElement('tr');
+                    tr.className = d % 2 === 0 ? "bg-gray-50 hover:bg-yellow-50" : "bg-white hover:bg-yellow-50";
+                    tr.innerHTML = `
+                        <td class="preview-cell">${weekNum}</td>
+                        <td class="preview-cell font-medium">${dateStr}</td>
+                        <td class="preview-cell">${arrM}</td>
+                        <td class="preview-cell">${depM}</td>
+                        <td class="preview-cell text-xs text-gray-400">${pauseM}</td>
+                        <td class="preview-cell font-bold">${totM}</td>
+                        <td class="preview-cell">${arrS}</td>
+                        <td class="preview-cell">${depS}</td>
+                        <td class="preview-cell text-xs text-gray-400">${pauseS}</td>
+                        <td class="preview-cell font-bold">${totS}</td>
+                        <td class="preview-cell font-bold text-blue-800">${totalDailyStr !== "00:00:00" ? totalDailyStr : ""}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+                if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
+             });
+        }
 
         // --- GENERAL LOGIC ---
         window.loadCorrectionData = () => {
@@ -976,7 +1138,9 @@
         window.addEmployee = async () => { const n=document.getElementById('new-employee-name').value, c=document.getElementById('new-employee-code').value; if(n&&c.length===4) try{ await addDoc(getColRef('employees'), {name:n, code:c}); document.getElementById('new-employee-name').value=''; document.getElementById('new-employee-code').value=''; }catch(e){} };
         window.deleteEmployee = async (id, name) => { if(confirm(`Del ${name}?`)) await deleteDoc(getDocRef('employees', id)); };
         function renderEmployeeTable() { const b = document.getElementById('employee-table-body'); b.innerHTML=''; employees.forEach(e=>{ b.innerHTML+=`<tr class="hover:bg-gray-50"><td class="px-6 py-3">${e.name}</td><td class="px-6 py-3">${e.code}</td><td class="px-6 py-3"><button onclick="deleteEmployee('${e.id}','${e.name}')" class="text-red-600">Supprimer</button></td></tr>`; }); }
-        function renderPunchTable() { const b = document.getElementById('punch-table-body'); b.innerHTML=''; punches.forEach(p=>{ const pi=p.punchInTime?p.punchInTime.toDate():null, po=p.punchOutTime?p.punchOutTime.toDate():null, br=p.breakDuration||0; const net = (pi&&po) ? (po-pi - br*60000) : 0; b.innerHTML+=`<tr class="text-sm hover:bg-gray-50"><td class="px-4 py-3">${p.employeeName||p.employeeCode}</td><td class="px-4 py-3">${pi?formatter.format(pi):''}</td><td class="px-4 py-3">${po?formatter.format(po):'<b class="text-red-500">EN COURS</b>'}</td><td class="px-4 py-3">${br}m</td><td class="px-4 py-3 font-bold text-blue-800">${po?formatDuration(net):''}</td></tr>`; }); }
+        
+        // OLD renderPunchTable - not used for main display anymore, logic moved to preview
+        function renderPunchTable() { /* kept empty or remove */ }
     </script>
 </body>
 </html>
