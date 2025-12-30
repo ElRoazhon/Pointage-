@@ -241,17 +241,17 @@
             background-color: #FFC000; 
             font-weight: bold; 
             text-align: center; 
-            font-size: 0.85rem; /* Augmenté */
-            border: 1px solid #94a3b8; /* Bordure plus visible */
-            padding: 12px 6px; /* Plus d'espace */
+            font-size: 0.85rem;
+            border: 1px solid #94a3b8;
+            padding: 12px 6px;
             color: #0f172a;
-            white-space: nowrap; /* Évite les retours à la ligne moches */
+            white-space: nowrap;
         }
         .preview-cell { 
             text-align: center; 
-            font-size: 0.95rem; /* Augmenté pour lisibilité */
+            font-size: 0.95rem;
             border: 1px solid #cbd5e1; 
-            padding: 12px 6px; /* Plus d'espace pour le doigt */
+            padding: 12px 6px;
             color: #334155;
             white-space: nowrap;
         }
@@ -681,6 +681,14 @@
             hour12: false
         });
 
+        // Helper pour avoir la date format YYYY-MM-DD locale (pour les input date)
+        function getLocalDateInputValue(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         window.showToast = (message) => {
             const toast = document.getElementById("toast-notification");
             toast.textContent = message;
@@ -1092,14 +1100,27 @@
         window.openManualPunchModal = (punchId) => {
             const modal = document.getElementById('manual-correction-modal'); const title = document.getElementById('correction-modal-title'); const empSelect = document.getElementById('edit-punch-employee'); const dateInput = document.getElementById('edit-punch-date'); const inInput = document.getElementById('edit-punch-in'); const outInput = document.getElementById('edit-punch-out'); const breakInput = document.getElementById('edit-punch-break'); const idInput = document.getElementById('edit-punch-id');
             let punchData = punchId ? punches.find(p => p.id === punchId) : null;
-            if (punchData) { title.textContent = "Modifier le pointage"; idInput.value = punchData.id; empSelect.value = punchData.employeeCode; empSelect.disabled = true; const pi = new Date(punchData.punchInTime.seconds * 1000); dateInput.value = pi.toISOString().split('T')[0]; inInput.value = pi.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); if (punchData.punchOutTime) { const po = new Date(punchData.punchOutTime.seconds * 1000); outInput.value = po.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); } else outInput.value = ''; breakInput.value = punchData.breakDuration || 0; } 
-            else { title.textContent = "Ajouter un pointage manuel"; idInput.value = ""; empSelect.disabled = false; empSelect.value = document.getElementById('admin-correction-employee').value || (employees.length > 0 ? employees[0].code : ""); dateInput.value = document.getElementById('admin-correction-date').value || new Date().toISOString().split('T')[0]; inInput.value = "09:00"; outInput.value = "17:00"; breakInput.value = 0; }
+            if (punchData) { title.textContent = "Modifier le pointage"; idInput.value = punchData.id; empSelect.value = punchData.employeeCode; empSelect.disabled = true; const pi = new Date(punchData.punchInTime.seconds * 1000); dateInput.value = getLocalDateInputValue(pi); inInput.value = pi.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); if (punchData.punchOutTime) { const po = new Date(punchData.punchOutTime.seconds * 1000); outInput.value = po.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); } else outInput.value = ''; breakInput.value = punchData.breakDuration || 0; } 
+            else { title.textContent = "Ajouter un pointage manuel"; idInput.value = ""; empSelect.disabled = false; empSelect.value = document.getElementById('admin-correction-employee').value || (employees.length > 0 ? employees[0].code : ""); dateInput.value = document.getElementById('admin-correction-date').value || getLocalDateInputValue(new Date()); inInput.value = "09:00"; outInput.value = "17:00"; breakInput.value = 0; }
             modal.classList.remove('hidden'); modal.classList.add('flex');
         };
         window.saveManualPunch = async () => {
             const id = document.getElementById('edit-punch-id').value; const empCode = document.getElementById('edit-punch-employee').value; const dateStr = document.getElementById('edit-punch-date').value; const inStr = document.getElementById('edit-punch-in').value; const outStr = document.getElementById('edit-punch-out').value; const breakVal = parseInt(document.getElementById('edit-punch-break').value) || 0;
             if (!empCode || !dateStr || !inStr) { alert("Champs requis manquants."); return; }
-            const empObj = employees.find(e => e.code === empCode); const buildDate = (dStr, tStr) => tStr ? new Date(`${dStr}T${tStr}:00`) : null; const punchInDate = buildDate(dateStr, inStr); let punchOutDate = buildDate(dateStr, outStr); if (punchOutDate && punchOutDate < punchInDate) punchOutDate.setDate(punchOutDate.getDate() + 1);
+            const empObj = employees.find(e => e.code === empCode); 
+            
+            // FIX: Manual Date Construction to avoid UTC offset
+            const [y, mo, d] = dateStr.split('-').map(Number);
+            const [h, mi] = inStr.split(':').map(Number);
+            const punchInDate = new Date(y, mo - 1, d, h, mi);
+            
+            let punchOutDate = null;
+            if (outStr) {
+                const [hOut, mOut] = outStr.split(':').map(Number);
+                punchOutDate = new Date(y, mo - 1, d, hOut, mOut);
+                if (punchOutDate < punchInDate) punchOutDate.setDate(punchOutDate.getDate() + 1);
+            }
+
             const data = { employeeCode: empCode, employeeName: empObj.name, punchInTime: Timestamp.fromDate(punchInDate), punchOutTime: punchOutDate ? Timestamp.fromDate(punchOutDate) : null, breakDuration: breakVal };
             try { if (id) await updateDoc(getDocRef('punches', id), data); else await addDoc(getColRef('punches'), data); showToast("Enregistré !"); document.getElementById('manual-correction-modal').classList.add('hidden'); document.getElementById('manual-correction-modal').classList.remove('flex'); } catch (e) { alert("Erreur: " + e.message); }
         };
@@ -1287,7 +1308,9 @@
             const dateInput = document.getElementById('manual-punch-date');
             const breakContainer = document.getElementById('manual-break-container');
             const now = new Date();
-            dateInput.value = now.toISOString().split('T')[0];
+            
+            // FIX: Use local date string instead of UTC-based toISOString
+            dateInput.value = getLocalDateInputValue(now);
             
             // Scroll wheels to now
             const h = String(now.getHours()).padStart(2, '0');
@@ -1304,7 +1327,13 @@
 
         window.closeManualTimeModal = () => { document.getElementById('manual-time-modal').classList.add('hidden'); document.getElementById('manual-time-modal').classList.remove('flex'); currentPunchMode = null; /* Don't clear employee yet if just cancelling */ };
         window.adjustBreak = (amount) => { const input = document.getElementById('manual-punch-break'); let val = parseInt(input.value) || 0; val = Math.max(0, val + amount); input.value = val; };
-        window.setManualToNow = () => { const now = new Date(); document.getElementById('manual-punch-date').value = now.toISOString().split('T')[0]; scrollToTime(String(now.getHours()).padStart(2,'0'), String(now.getMinutes()).padStart(2,'0')); };
+        
+        window.setManualToNow = () => { 
+            const now = new Date(); 
+            // FIX: Use local date
+            document.getElementById('manual-punch-date').value = getLocalDateInputValue(now);
+            scrollToTime(String(now.getHours()).padStart(2,'0'), String(now.getMinutes()).padStart(2,'0')); 
+        };
 
         window.confirmManualPunch = async () => {
             if (!currentManualEmployee) return;
@@ -1312,7 +1341,14 @@
             // Get time from global vars updated by scroll
             const timeStr = `${selectedHour}:${selectedMinute}`;
             if (!dateStr) { alert("Date requise."); return; }
-            const dateTime = new Date(`${dateStr}T${timeStr}:00`);
+            
+            // FIX: Manual construction of Date to avoid UTC shift issues
+            // new Date('YYYY-MM-DDTHH:mm') is sometimes interpreted as UTC or Local depending on browser.
+            // new Date(y, m, d, h, m) is strictly local.
+            const [y, mo, d] = dateStr.split('-').map(Number);
+            const [h, mi] = timeStr.split(':').map(Number);
+            const dateTime = new Date(y, mo - 1, d, h, mi);
+
             const breakDuration = parseInt(document.getElementById('manual-punch-break').value) || 0;
             try {
                 if (currentPunchMode === 'IN') { await addDoc(getColRef('punches'), { employeeCode: currentManualEmployee.code, employeeName: currentManualEmployee.name, punchInTime: Timestamp.fromDate(dateTime), punchOutTime: null, breakDuration: 0 }); showSuccessModal(`Bonjour ${currentManualEmployee.name} ! Pointage enregistré.`); }
