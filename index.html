@@ -110,7 +110,7 @@
             height: 100%;
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
-            padding-top: 60px;
+            padding-top: 60px; /* Aligns perfectly with highlight at top 50% - 20px */
             padding-bottom: 60px;
             position: relative;
             z-index: 10;
@@ -1144,20 +1144,18 @@
             const hWheel = document.getElementById('hour-wheel');
             const mWheel = document.getElementById('minute-wheel');
             
-            // Padding items to allow scrolling first/last items to center
-            const pad = '<div class="wheel-item" style="height:40px;"></div>';
+            // REMOVED EXTRA PADDING DIVS HERE
+            // Padding items are handled by CSS padding-top/bottom 60px on the container
             
-            let hHTML = pad; // Removed top padding, relying on container padding
+            let hHTML = ''; 
             for(let i=0; i<24; i++) {
                 hHTML += `<div class="wheel-item" data-val="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</div>`;
             }
-            hHTML += pad; // Removed bottom padding
             
-            let mHTML = pad;
+            let mHTML = '';
             for(let i=0; i<60; i++) {
                 mHTML += `<div class="wheel-item" data-val="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</div>`;
             }
-            mHTML += pad;
             
             hWheel.innerHTML = hHTML;
             mWheel.innerHTML = mHTML;
@@ -1185,7 +1183,8 @@
             // Highlight styling logic (optional, for opacity change)
             Array.from(el.children).forEach((child, i) => {
                 if (child.classList.contains('wheel-item') && child.dataset.val) {
-                   if (i - 1 === index) { // -1 because of top padding div
+                   // REMOVED -1 offset because pad divs are gone
+                   if (i === index) { 
                        child.style.color = '#1d4ed8'; // blue-700
                        child.style.transform = 'scale(1.1)';
                    } else {
