@@ -747,7 +747,8 @@
                 console.error("No last punch ID to undo");
                 return;
             }
-            if (!confirm("Voulez-vous vraiment annuler ce pointage ?")) return;
+            // Confirmation removed by user request
+            // if (!confirm("Voulez-vous vraiment annuler ce pointage ?")) return;
             
             try {
                 const docRef = getDocRef('punches', lastCreatedPunchId);
