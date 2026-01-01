@@ -542,27 +542,9 @@
                     Aperçu Tableau Comptable
                 </h3>
                 
-                <div id="preview-records-container" class="overflow-x-auto max-h-[600px] border border-gray-300 rounded-lg shadow-inner bg-gray-50">
-                    <table class="min-w-full border-collapse">
-                        <thead class="sticky top-0 z-10 shadow-sm">
-                            <tr>
-                                <th class="preview-header">Sem</th>
-                                <th class="preview-header">Date</th>
-                                <th class="preview-header">Arr M</th>
-                                <th class="preview-header">Dep M</th>
-                                <th class="preview-header">Pau M</th>
-                                <th class="preview-header">Tot M</th>
-                                <th class="preview-header">Arr S</th>
-                                <th class="preview-header">Dep S</th>
-                                <th class="preview-header">Pau S</th>
-                                <th class="preview-header">Tot S</th>
-                                <th class="preview-header">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="preview-table-body" class="bg-white">
-                            <tr><td colspan="11" class="text-center py-8 text-gray-500 italic">Chargement des données...</td></tr>
-                        </tbody>
-                    </table>
+                <!-- NEW CONTAINER FOR SEPARATED TABLES -->
+                <div id="preview-records-container" class="space-y-8">
+                   <!-- Tables will be injected here by JS -->
                 </div>
 
                 <div class="mt-4 flex justify-end">
@@ -616,19 +598,31 @@
                 </div>
                 <button onclick="setManualToNow()" class="w-full py-3 mt-2 text-xs font-bold text-blue-500 uppercase tracking-wide hover:bg-blue-50 rounded transition-colors">Remettre à maintenant</button>
             </div>
-
-            <div id="manual-break-container" class="mb-6 hidden">
-                <label class="block text-sm font-bold text-gray-600 mb-2">Pause (minutes)</label>
-                <div class="flex items-center select-none">
-                    <button onclick="adjustBreak(-5)" class="p-4 bg-gray-100 rounded-l-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16">-</button>
-                    <input type="number" id="manual-punch-break" value="0" min="0" class="w-full p-4 border-y-2 border-gray-200 text-center text-xl font-bold">
-                    <button onclick="adjustBreak(5)" class="p-4 bg-gray-100 rounded-r-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16">+</button>
-                </div>
-            </div>
+            
+            <!-- REMOVED BREAK INPUT FROM HERE, MOVED TO RED MODAL -->
 
             <div class="flex space-x-3 mt-2">
                 <button onclick="closeManualTimeModal()" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-600 font-medium hover:bg-gray-50 transition-colors">Annuler</button>
                 <button onclick="confirmManualPunch()" class="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors">Valider</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: REDESIGNED BREAK SELECTION MODAL (Cleaner White) -->
+    <div id="break-selection-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col animate-bounce-in">
+            <h3 class="text-xl font-bold mb-2 text-center text-gray-800">Temps de Pause ?</h3>
+            <p class="text-center text-gray-500 mb-6 text-sm">Entrez la durée de votre pause en minutes</p>
+            
+            <div class="flex items-center justify-center mb-8 select-none">
+                <button onclick="adjustBreakRed(-5)" class="p-4 bg-gray-100 rounded-l-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16 text-xl transition-colors">-</button>
+                <input type="number" id="red-punch-break" value="0" min="0" class="w-24 p-4 bg-white text-gray-800 border-y border-gray-200 text-center text-3xl font-bold focus:outline-none focus:border-blue-500">
+                <button onclick="adjustBreakRed(5)" class="p-4 bg-gray-100 rounded-r-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16 text-xl transition-colors">+</button>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="document.getElementById('break-selection-modal').classList.add('hidden'); document.getElementById('break-selection-modal').classList.remove('flex');" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-600 font-medium hover:bg-gray-50 transition-colors">Retour</button>
+                <button onclick="confirmBreak()" class="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-colors">Valider</button>
             </div>
         </div>
     </div>
@@ -643,6 +637,14 @@
             </div>
             <h3 class="text-2xl font-bold text-gray-900 mb-2">Succès !</h3>
             <p id="punch-success-message" class="text-lg text-gray-600 font-medium mb-6">Message de confirmation</p>
+            
+            <button onclick="undoLastPunch()" class="w-full py-3 mb-4 bg-red-50 text-red-600 border border-red-100 rounded-lg font-bold text-sm hover:bg-red-100 flex items-center justify-center transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Oups, je me suis trompé (Annuler)
+            </button>
+
             <div class="w-full bg-gray-200 rounded-full h-1.5 mb-1"><div id="punch-progress-bar" class="bg-green-600 h-1.5 rounded-full" style="width: 100%"></div></div>
             <p class="text-xs text-gray-400">Fermeture automatique...</p>
         </div>
@@ -671,6 +673,7 @@
         let isAuthReady = false;
         let currentAdminCode = "1976"; 
         let currentEmployee = null; // Store currently logged in employee for the dashboard
+        let lastCreatedPunchId = null; // Store ID for "Undo" feature
         
         const getColRef = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
         const getDocRef = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
@@ -717,18 +720,73 @@
             return sign + [hours, minutes, seconds].map(val => String(val).padStart(2, '0')).join(':');
         }
 
-        function showSuccessModal(message) {
+        window.showSuccessModal = (message, punchId) => {
             const modal = document.getElementById('punch-success-modal');
             const msgEl = document.getElementById('punch-success-message');
             const bar = document.getElementById('punch-progress-bar');
             msgEl.textContent = message;
+            lastCreatedPunchId = punchId; // Store for Undo
+            
             bar.classList.remove('progress-bar');
             void bar.offsetWidth; 
             bar.classList.add('progress-bar');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 5000);
+            
+            // Auto close timer
+            if (window.successModalTimer) clearTimeout(window.successModalTimer);
+            window.successModalTimer = setTimeout(() => { 
+                modal.classList.add('hidden'); 
+                modal.classList.remove('flex'); 
+            }, 5000);
         }
+        
+        // FIXED: Undo Function Logic
+        window.undoLastPunch = async () => {
+            if (!lastCreatedPunchId) {
+                console.error("No last punch ID to undo");
+                return;
+            }
+            if (!confirm("Voulez-vous vraiment annuler ce pointage ?")) return;
+            
+            try {
+                const docRef = getDocRef('punches', lastCreatedPunchId);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // Logic to distinguish between undoing an IN or OUT punch
+                    // If punchOutTime exists, it means we just clocked OUT. We should clear it to stay clocked IN.
+                    if (data.punchOutTime) {
+                        await updateDoc(docRef, { punchOutTime: null, breakDuration: 0 });
+                        showToast("Dépointage annulé. Vous êtes toujours pointé.");
+                    } else {
+                        // If only punchInTime exists, we just clocked IN. Delete the whole record.
+                        await deleteDoc(docRef);
+                        showToast("Pointage annulé.");
+                    }
+                } else {
+                    showToast("Erreur: Pointage introuvable.");
+                }
+                
+                // Force Close modal immediately
+                if (window.successModalTimer) clearTimeout(window.successModalTimer);
+                document.getElementById('punch-success-modal').classList.add('hidden');
+                document.getElementById('punch-success-modal').classList.remove('flex');
+                
+                // If user is still "logged in", refresh dashboard state
+                if (currentEmployee) {
+                    verifyCodeAndShowMenu(); 
+                } else {
+                    resetToCodeEntry();
+                }
+                
+            } catch (e) {
+                console.error("Undo error", e);
+                alert("Erreur lors de l'annulation: " + e.message);
+            }
+        };
 
         // --- INIT ---
         window.onload = async () => {
@@ -915,102 +973,95 @@
         
         // NEW: Shared function to generate table HTML for a list of employees
         // Used by Admin Preview AND Employee Preview
-        function renderTableHTML(targetBodyId, employeeList, year, month) {
-            const tbody = document.getElementById(targetBodyId);
-            tbody.innerHTML = '';
-
-            if (employeeList.length === 0) {
-                 tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-gray-500 italic">Aucune donnée à afficher.</td></tr>';
-                 return;
-            }
+        function renderEmployeeRows(tbodyElement, emp, year, month) {
+            if (!tbodyElement) return;
+            tbodyElement.innerHTML = '';
 
             const daysInMonth = new Date(year, month, 0).getDate();
 
-            employeeList.forEach(emp => {
-                // Header for Employee (Only if admin view, or if we want to show name)
-                if(targetBodyId === 'preview-table-body') {
-                     const empHeaderRow = document.createElement('tr');
-                     empHeaderRow.innerHTML = `<td colspan="11" class="bg-gray-100 font-bold text-gray-800 p-2 text-left border-b border-t border-gray-300 pl-4 mt-4">${emp.name} (${emp.code})</td>`;
-                     tbody.appendChild(empHeaderRow);
+            let currentWeekNum = null; 
+            let weeklyTotalMs = 0;
+
+            const pushWeekSummary = (weekNum) => {
+                 const totalStr = formatDuration(weeklyTotalMs);
+                 const row = document.createElement('tr');
+                 row.innerHTML = `<td class="preview-week-row">TOT SEM ${weekNum}</td><td colspan="8"></td><td class="preview-week-row">TOT HEBDO</td><td class="preview-week-row">${totalStr}</td>`;
+                 tbodyElement.appendChild(row);
+            };
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(year, month - 1, d);
+                const weekNum = getWeekNumber(dateObj);
+                const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
+
+                if (currentWeekNum !== null && weekNum !== currentWeekNum) {
+                    pushWeekSummary(currentWeekNum);
+                    weeklyTotalMs = 0;
                 }
+                currentWeekNum = weekNum;
 
-                let currentWeekNum = null; 
-                let weeklyTotalMs = 0;
-
-                const pushWeekSummary = (weekNum) => {
-                     const totalStr = formatDuration(weeklyTotalMs);
-                     const row = document.createElement('tr');
-                     row.innerHTML = `<td class="preview-week-row">TOT SEM ${weekNum}</td><td colspan="8"></td><td class="preview-week-row">TOT HEBDO</td><td class="preview-week-row">${totalStr}</td>`;
-                     tbody.appendChild(row);
-                };
-
-                for (let d = 1; d <= daysInMonth; d++) {
-                    const dateObj = new Date(year, month - 1, d);
-                    const weekNum = getWeekNumber(dateObj);
-                    const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
-
-                    if (currentWeekNum !== null && weekNum !== currentWeekNum) {
-                        pushWeekSummary(currentWeekNum);
-                        weeklyTotalMs = 0;
-                    }
-                    currentWeekNum = weekNum;
-
-                    const dayKey = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                    const dayPunches = punches.filter(p => { 
-                        if (p.employeeCode !== emp.code || !p.punchInTime) return false;
-                        const pDate = p.punchInTime.toDate();
-                        const pKey = `${pDate.getFullYear()}-${String(pDate.getMonth()+1).padStart(2,'0')}-${String(pDate.getDate()).padStart(2,'0')}`;
-                        return pKey === dayKey; 
-                    });
+                const dayKey = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayPunches = punches.filter(p => { 
+                    if (p.employeeCode !== emp.code || !p.punchInTime) return false;
+                    const pDate = p.punchInTime.toDate();
                     
-                    dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
-
-                    let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; 
-                    let duration1 = 0, duration2 = 0;
-
-                    if (dayPunches.length > 0) {
-                        const p1 = dayPunches[0]; 
-                        const p1In = p1.punchInTime.toDate(); 
-                        const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; 
-                        const p1Break = p1.breakDuration || 0;
-                        arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-                        depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
-                        pauseM = p1Break > 0 ? p1Break : "";
-                        if(p1Out) { duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - (p1Break * 60000)); totM = formatDuration(duration1); }
-
-                        if (dayPunches.length > 1) {
-                            const p2 = dayPunches[1]; 
-                            const p2In = p2.punchInTime.toDate(); 
-                            const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; 
-                            const p2Break = p2.breakDuration || 0;
-                            arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-                            depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
-                            pauseS = p2Break > 0 ? p2Break : "";
-                            if(p2Out) { duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - (p2Break * 60000)); totS = formatDuration(duration2); }
-                        }
-                        totalDailyStr = formatDuration(duration1 + duration2); 
-                        weeklyTotalMs += (duration1 + duration2);
+                    // LOGIC FOR NIGHT SHIFT GROUPING IN TABLE
+                    const displayDate = new Date(pDate);
+                    if (displayDate.getHours() < 3) {
+                        displayDate.setDate(displayDate.getDate() - 1);
                     }
+                    
+                    const pKey = `${displayDate.getFullYear()}-${String(displayDate.getMonth()+1).padStart(2,'0')}-${String(displayDate.getDate()).padStart(2,'0')}`;
+                    return pKey === dayKey; 
+                });
+                
+                dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
 
-                    const tr = document.createElement('tr');
-                    tr.className = d % 2 === 0 ? "bg-gray-50 hover:bg-yellow-50" : "bg-white hover:bg-yellow-50";
-                    tr.innerHTML = `
-                        <td class="preview-cell">${weekNum}</td>
-                        <td class="preview-cell font-medium">${dateStr}</td>
-                        <td class="preview-cell">${arrM}</td>
-                        <td class="preview-cell">${depM}</td>
-                        <td class="preview-cell text-xs text-gray-400">${pauseM}</td>
-                        <td class="preview-cell font-bold">${totM}</td>
-                        <td class="preview-cell">${arrS}</td>
-                        <td class="preview-cell">${depS}</td>
-                        <td class="preview-cell text-xs text-gray-400">${pauseS}</td>
-                        <td class="preview-cell font-bold">${totS}</td>
-                        <td class="preview-cell font-bold text-blue-800">${totalDailyStr !== "00:00:00" ? totalDailyStr : ""}</td>
-                    `;
-                    tbody.appendChild(tr);
+                let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; 
+                let duration1 = 0, duration2 = 0;
+
+                if (dayPunches.length > 0) {
+                    const p1 = dayPunches[0]; 
+                    const p1In = p1.punchInTime.toDate(); 
+                    const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; 
+                    const p1Break = p1.breakDuration || 0;
+                    arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                    depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
+                    pauseM = p1Break > 0 ? p1Break : "";
+                    if(p1Out) { duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - (p1Break * 60000)); totM = formatDuration(duration1); }
+
+                    if (dayPunches.length > 1) {
+                        const p2 = dayPunches[1]; 
+                        const p2In = p2.punchInTime.toDate(); 
+                        const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; 
+                        const p2Break = p2.breakDuration || 0;
+                        arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                        depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
+                        pauseS = p2Break > 0 ? p2Break : "";
+                        if(p2Out) { duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - (p2Break * 60000)); totS = formatDuration(duration2); }
+                    }
+                    totalDailyStr = formatDuration(duration1 + duration2); 
+                    weeklyTotalMs += (duration1 + duration2);
                 }
-                if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
-             });
+
+                const tr = document.createElement('tr');
+                tr.className = d % 2 === 0 ? "bg-gray-50 hover:bg-yellow-50" : "bg-white hover:bg-yellow-50";
+                tr.innerHTML = `
+                    <td class="preview-cell">${weekNum}</td>
+                    <td class="preview-cell font-medium">${dateStr}</td>
+                    <td class="preview-cell">${arrM}</td>
+                    <td class="preview-cell">${depM}</td>
+                    <td class="preview-cell text-xs text-gray-400">${pauseM}</td>
+                    <td class="preview-cell font-bold">${totM}</td>
+                    <td class="preview-cell">${arrS}</td>
+                    <td class="preview-cell">${depS}</td>
+                    <td class="preview-cell text-xs text-gray-400">${pauseS}</td>
+                    <td class="preview-cell font-bold">${totS}</td>
+                    <td class="preview-cell font-bold text-blue-800">${totalDailyStr !== "00:00:00" ? totalDailyStr : ""}</td>
+                `;
+                tbodyElement.appendChild(tr);
+            }
+            if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
         }
 
         window.exportToExcel = () => {
@@ -1049,7 +1100,19 @@
                     currentWeekNum = weekNum;
                     
                     const dayKey = `${selYear}-${String(selMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                    const dayPunches = punches.filter(p => { if (p.employeeCode !== emp.code || !p.punchInTime) return false; const pDate = p.punchInTime.toDate(); const pKey = `${pDate.getFullYear()}-${String(pDate.getMonth()+1).padStart(2,'0')}-${String(pDate.getDate()).padStart(2,'0')}`; return pKey === dayKey; });
+                    const dayPunches = punches.filter(p => { 
+                        if (p.employeeCode !== emp.code || !p.punchInTime) return false;
+                        const pDate = p.punchInTime.toDate(); 
+                        
+                        // LOGIC FOR NIGHT SHIFT GROUPING IN EXCEL
+                        const displayDate = new Date(pDate);
+                        if (displayDate.getHours() < 3) {
+                             displayDate.setDate(displayDate.getDate() - 1);
+                        }
+                        
+                        const pKey = `${displayDate.getFullYear()}-${String(displayDate.getMonth()+1).padStart(2,'0')}-${String(displayDate.getDate()).padStart(2,'0')}`; 
+                        return pKey === dayKey; 
+                    });
                     dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
                     
                     let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; let duration1 = 0, duration2 = 0;
@@ -1078,13 +1141,59 @@
         // --- PREVIEW RENDER FUNCTION (ADMIN) ---
         window.renderMonthPreview = () => {
              const monthPicker = document.getElementById('admin-month-picker');
+             const container = document.getElementById('preview-records-container');
              const selectedMonthVal = monthPicker.value;
 
              if (!selectedMonthVal) return;
+             
+             // Clear existing cards
+             container.innerHTML = '';
+             
              const [selYear, selMonth] = selectedMonthVal.split('-').map(Number);
              
-             // Use generic function for Admin preview (all employees)
-             renderTableHTML('preview-table-body', employees, selYear, selMonth);
+             if (employees.length === 0) {
+                 container.innerHTML = '<div class="text-center py-8 text-gray-500 italic">Aucun employé enregistré.</div>';
+                 return;
+             }
+
+             // Generate a CARD for each employee
+             employees.forEach(emp => {
+                const card = document.createElement('div');
+                card.className = "mb-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden";
+                card.innerHTML = `
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                        <span class="font-bold text-gray-700 text-lg">${emp.name}</span>
+                        <span class="text-xs font-mono bg-white px-2 py-1 rounded border">${emp.code}</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full border-collapse">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="preview-header">Sem</th>
+                                    <th class="preview-header">Date</th>
+                                    <th class="preview-header">Arr M</th>
+                                    <th class="preview-header">Dep M</th>
+                                    <th class="preview-header">Pau M</th>
+                                    <th class="preview-header">Tot M</th>
+                                    <th class="preview-header">Arr S</th>
+                                    <th class="preview-header">Dep S</th>
+                                    <th class="preview-header">Pau S</th>
+                                    <th class="preview-header">Tot S</th>
+                                    <th class="preview-header">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white">
+                                <tr><td colspan="11" class="text-center py-4 text-gray-400">Chargement...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(card);
+                
+                // Render data into the specific tbody for this card
+                const tbody = card.querySelector('tbody');
+                renderEmployeeRows(tbody, emp, selYear, selMonth);
+             });
         };
 
         // --- GENERAL LOGIC ---
@@ -1138,6 +1247,8 @@
 
         let currentPunchMode = null; let currentManualEmployee = null; let currentManualPunchDoc = null;
         let selectedHour = "00"; let selectedMinute = "00";
+        // TEMP Storage for Date/Time before Break selection
+        let tempPunchDate = null;
 
         // --- NEW: SCROLL WHEEL LOGIC ---
         function populateWheels() {
@@ -1277,7 +1388,10 @@
             
             // Render Table
             const today = new Date();
-            renderTableHTML('employee-history-body', [currentEmployee], today.getFullYear(), today.getMonth() + 1);
+            const tbody = document.getElementById('employee-history-body');
+            // Clear needed since renderEmployeeRows appends
+            tbody.innerHTML = '';
+            renderEmployeeRows(tbody, currentEmployee, today.getFullYear(), today.getMonth() + 1);
         };
 
         window.resetToCodeEntry = () => {
@@ -1305,32 +1419,43 @@
             const modal = document.getElementById('manual-time-modal');
             const title = document.getElementById('manual-time-title');
             const dateInput = document.getElementById('manual-punch-date');
-            const breakContainer = document.getElementById('manual-break-container');
             const now = new Date();
             
-            // FIX: Use local date string instead of UTC-based toISOString
-            dateInput.value = getLocalDateInputValue(now);
+            // --- NIGHT SHIFT LOGIC (Default Date) ---
+            // If it is between 00:00 and 03:00, default date is Yesterday
+            const effectiveDate = new Date(now);
+            if (now.getHours() < 3) {
+                effectiveDate.setDate(effectiveDate.getDate() - 1);
+            }
             
-            // Scroll wheels to now
+            // FIX: Use local date string instead of UTC-based toISOString
+            dateInput.value = getLocalDateInputValue(effectiveDate);
+            
+            // Scroll wheels to now (Real time)
             const h = String(now.getHours()).padStart(2, '0');
             const m = String(now.getMinutes()).padStart(2, '0');
             // We need a small timeout to let modal render before scrolling
             setTimeout(() => scrollToTime(h, m), 50);
 
-            if (mode === 'IN') { title.textContent = `Bonjour ${employee.name} (Arrivée)`; breakContainer.classList.add('hidden'); }
-            else { title.textContent = `Au revoir ${employee.name} (Départ)`; breakContainer.classList.remove('hidden'); document.getElementById('manual-punch-break').value = 0; }
+            if (mode === 'IN') { title.textContent = `Bonjour ${employee.name} (Arrivée)`; }
+            else { title.textContent = `Au revoir ${employee.name} (Départ)`; }
+            
             modal.classList.remove('hidden'); modal.classList.add('flex');
-            // NO LONGER CLEAR CODE HERE - WE STAY LOGGED IN UNTIL USER CLICKS BACK OR AUTO TIMEOUT?
-            // Actually, usually after punch, we want to go back to login screen for next user.
         };
 
-        window.closeManualTimeModal = () => { document.getElementById('manual-time-modal').classList.add('hidden'); document.getElementById('manual-time-modal').classList.remove('flex'); currentPunchMode = null; /* Don't clear employee yet if just cancelling */ };
-        window.adjustBreak = (amount) => { const input = document.getElementById('manual-punch-break'); let val = parseInt(input.value) || 0; val = Math.max(0, val + amount); input.value = val; };
+        window.closeManualTimeModal = () => { document.getElementById('manual-time-modal').classList.add('hidden'); document.getElementById('manual-time-modal').classList.remove('flex'); currentPunchMode = null; };
+        
+        window.adjustBreakRed = (amount) => { const input = document.getElementById('red-punch-break'); let val = parseInt(input.value) || 0; val = Math.max(0, val + amount); input.value = val; };
         
         window.setManualToNow = () => { 
             const now = new Date(); 
+            // NIGHT SHIFT LOGIC (Button)
+            const effectiveDate = new Date(now);
+            if (now.getHours() < 3) {
+                effectiveDate.setDate(effectiveDate.getDate() - 1);
+            }
             // FIX: Use local date
-            document.getElementById('manual-punch-date').value = getLocalDateInputValue(now);
+            document.getElementById('manual-punch-date').value = getLocalDateInputValue(effectiveDate);
             scrollToTime(String(now.getHours()).padStart(2,'0'), String(now.getMinutes()).padStart(2,'0')); 
         };
 
@@ -1342,22 +1467,69 @@
             if (!dateStr) { alert("Date requise."); return; }
             
             // FIX: Manual construction of Date to avoid UTC shift issues
-            // new Date('YYYY-MM-DDTHH:mm') is sometimes interpreted as UTC or Local depending on browser.
-            // new Date(y, m, d, h, m) is strictly local.
             const [y, mo, d] = dateStr.split('-').map(Number);
             const [h, mi] = timeStr.split(':').map(Number);
             const dateTime = new Date(y, mo - 1, d, h, mi);
+            
+            // --- NIGHT SHIFT LOGIC (Timestamp Construction) ---
+            // If the user selected "Yesterday" (because h<3), but the Time is < 3am, 
+            // we need to add 1 day to the physical timestamp so it matches reality.
+            // Example: Today is Tuesday 01:00. DatePicker defaults to Monday. TimePicker is 01:00.
+            // dateTime becomes Monday 01:00. This is 24h ago.
+            // We want the timestamp to be Tuesday 01:00 (Reality).
+            if (h < 3) {
+                 dateTime.setDate(dateTime.getDate() + 1);
+            }
 
-            const breakDuration = parseInt(document.getElementById('manual-punch-break').value) || 0;
+            // TEMP SAVE for OUT
+            tempPunchDate = dateTime;
+
             try {
-                if (currentPunchMode === 'IN') { await addDoc(getColRef('punches'), { employeeCode: currentManualEmployee.code, employeeName: currentManualEmployee.name, punchInTime: Timestamp.fromDate(dateTime), punchOutTime: null, breakDuration: 0 }); showSuccessModal(`Bonjour ${currentManualEmployee.name} ! Pointage enregistré.`); }
-                else if (currentPunchMode === 'OUT' && currentManualPunchDoc) { await updateDoc(currentManualPunchDoc.ref, { punchOutTime: Timestamp.fromDate(dateTime), breakDuration: breakDuration }); showSuccessModal(`Au revoir ${currentManualEmployee.name} ! Dépointage enregistré.`); }
-                
-                // After success, close modal AND go back to login screen for next person
-                closeManualTimeModal();
-                resetToCodeEntry(); 
+                if (currentPunchMode === 'IN') { 
+                    // Direct Save for IN
+                    const docRef = await addDoc(getColRef('punches'), { employeeCode: currentManualEmployee.code, employeeName: currentManualEmployee.name, punchInTime: Timestamp.fromDate(dateTime), punchOutTime: null, breakDuration: 0 }); 
+                    closeManualTimeModal();
+                    resetToCodeEntry();
+                    showSuccessModal(`Bonjour ${currentManualEmployee.name} ! Pointage enregistré.`, docRef.id); 
+                }
+                else if (currentPunchMode === 'OUT' && currentManualPunchDoc) { 
+                    // NEW FLOW: Close time modal, Open break modal
+                    closeManualTimeModal();
+                    openBreakModal();
+                }
                 
             } catch (e) { console.error("Erreur pointage manuel:", e); alert("Erreur: " + e.message); }
+        };
+
+        // NEW: Open Red Break Modal
+        window.openBreakModal = () => {
+            const modal = document.getElementById('break-selection-modal');
+            // Reset value
+            document.getElementById('red-punch-break').value = 0;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        // NEW: Confirm Break and Final Save
+        window.confirmBreak = async () => {
+            const breakDuration = parseInt(document.getElementById('red-punch-break').value) || 0;
+            const modal = document.getElementById('break-selection-modal');
+            
+            try {
+                // Perform the Update
+                await updateDoc(currentManualPunchDoc.ref, { punchOutTime: Timestamp.fromDate(tempPunchDate), breakDuration: breakDuration });
+                
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                
+                resetToCodeEntry();
+                // FIX: Pass the document ID to showSuccessModal so Undo works for OUT punch too
+                showSuccessModal(`Au revoir ${currentManualEmployee.name} ! Dépointage enregistré.`, currentManualPunchDoc.id);
+
+            } catch(e) {
+                 console.error("Erreur break save:", e); 
+                 alert("Erreur: " + e.message); 
+            }
         };
 
         // DEPRECATED displayEmployeeStatus - Removed logic calling this
