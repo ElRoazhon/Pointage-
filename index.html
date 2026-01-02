@@ -827,7 +827,7 @@
             if (currentWeekNum !== null) pushWeekSummary(currentWeekNum);
         }
         
-        // --- UPDATED EXCEL EXPORT (DECIMAL HOURS) ---
+        // --- UPDATED EXCEL EXPORT (DECIMAL HOURS + FORMULAS + HS COLS) ---
         window.exportToExcel = () => {
             const monthPicker = document.getElementById('admin-month-picker');
             const selectedMonthVal = monthPicker.value;
@@ -840,23 +840,80 @@
             // Styles
             const headerStyle = { font: { bold: true, color: { rgb: "000000" } }, fill: { fgColor: { rgb: "FFC000" } }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const cellStyle = { alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
-            const totalRowStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFF2CC" } }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
+            // FIX: Use numFmt property for correct Excel formatting
+            const timeStyle = { numFmt: 'hh:mm', alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
+            const durationStyle = { numFmt: '[h]:mm', alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
+            const decStyle = { numFmt: '0.00', font: { bold: true }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const weekSummaryStyle = { font: { bold: true, color: { rgb: "FF0000" } }, fill: { fgColor: { rgb: "FFFF00" } }, alignment: { horizontal: "center" }, border: { top: {style:'medium'}, bottom: {style:'medium'}, left: {style:'medium'}, right: {style:'medium'} } };
             
+            // Helper to get Excel Time Value (fraction of day)
+            const getExcelTime = (dateObj) => {
+                if(!dateObj) return "";
+                const h = dateObj.getHours();
+                const m = dateObj.getMinutes();
+                return (h / 24) + (m / 1440);
+            };
+
             employees.forEach(emp => {
                 const rows = [];
-                // Header
-                rows.push([{v: 'N° Semaine', s: headerStyle},{v: 'Date', s: headerStyle},{v: 'Arrivée M', s: headerStyle},{v: 'Départ M', s: headerStyle},{v: 'Pause M', s: headerStyle},{v: 'Total M', s: headerStyle},{v: 'Arrivée S', s: headerStyle},{v: 'Départ S', s: headerStyle},{v: 'Pause S', s: headerStyle},{v: 'Total S', s: headerStyle},{v: 'Total Jour (h.cent)', s: headerStyle}]);
+                // Header (Row 1) with HS Columns
+                rows.push([
+                    {v: 'N° Semaine', s: headerStyle},
+                    {v: 'Date', s: headerStyle},
+                    {v: 'Arrivée M', s: headerStyle},
+                    {v: 'Départ M', s: headerStyle},
+                    {v: 'Pause M', s: headerStyle},
+                    {v: 'Total M', s: headerStyle},
+                    {v: 'Arrivée S', s: headerStyle},
+                    {v: 'Départ S', s: headerStyle},
+                    {v: 'Pause S', s: headerStyle},
+                    {v: 'Total S', s: headerStyle},
+                    {v: 'Total Jour', s: headerStyle},
+                    {v: 'HS 10%', s: headerStyle},
+                    {v: 'HS 20%', s: headerStyle},
+                    {v: 'HS 50%', s: headerStyle}
+                ]);
                 
                 let currentWeekNum = null; 
-                let weeklyTotalMs = 0;
-                
+                let startRowOfWeek = 2; // Data starts at row 2
+                let currentRowIndex = 2; // Track current row in Excel (1-based index)
+
                 const pushWeekSummary = (weekNum) => {
-                     // CALCULATE DECIMAL HOURS FOR WEEK
-                     const totalDecimalHours = parseFloat((weeklyTotalMs / (1000 * 60 * 60)).toFixed(2));
+                     const endRowOfWeek = currentRowIndex - 1;
+                     const kRow = currentRowIndex; // The summary row index
                      
-                     rows.push([{v: `TOTAL SEM ${weekNum}`, s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: 'TOTAL HEBDO:', s: weekSummaryStyle},{v: totalDecimalHours, s: weekSummaryStyle}]);
-                     rows.push([null]); 
+                     // Weekly Total Formula (Col K)
+                     const sumFormula = `SUM(K${startRowOfWeek}:K${endRowOfWeek})`;
+                     
+                     // OVERTIME FORMULAS (Based on Weekly Total in Column K)
+                     // Assuming thresholds: 35h, 39h, 43h
+                     // HS 10%: >35 to 39
+                     const formula10 = `MAX(0, MIN(K${kRow}, 39) - 35)`;
+                     // HS 20%: >39 to 43
+                     const formula20 = `MAX(0, MIN(K${kRow}, 43) - 39)`;
+                     // HS 50%: >43
+                     const formula50 = `MAX(0, K${kRow} - 43)`;
+
+                     rows.push([
+                         {v: `TOTAL SEM ${weekNum}`, s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: '', s: weekSummaryStyle},
+                         {v: 'TOTAL HEBDO:', s: weekSummaryStyle},
+                         {f: sumFormula, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }}, // K: Weekly Total
+                         {f: formula10, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }},  // L: 10%
+                         {f: formula20, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }},  // M: 20%
+                         {f: formula50, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }}   // N: 50%
+                     ]);
+                     
+                     rows.push([null]); // Empty row spacer
+                     currentRowIndex += 2;
+                     startRowOfWeek = currentRowIndex;
                 };
                 
                 for (let d = 1; d <= daysInMonth; d++) {
@@ -864,7 +921,9 @@
                     const weekNum = getWeekNumber(dateObj); 
                     const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
                     
-                    if (currentWeekNum !== null && weekNum !== currentWeekNum) { pushWeekSummary(currentWeekNum); weeklyTotalMs = 0; }
+                    if (currentWeekNum !== null && weekNum !== currentWeekNum) { 
+                        pushWeekSummary(currentWeekNum); 
+                    }
                     currentWeekNum = weekNum;
                     
                     const dayPunches = punches.filter(p => { 
@@ -879,53 +938,66 @@
                     
                     dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
                     
-                    let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "";
-                    let duration1 = 0, duration2 = 0;
+                    let arrMVal = "", depMVal = "", pauseMVal = 0;
+                    let arrSVal = "", depSVal = "", pauseSVal = 0;
                     
                     if (dayPunches.length > 0) {
                         const p1 = dayPunches[0]; 
                         const p1In = p1.punchInTime.toDate(); 
                         const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; 
-                        arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-                        depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; 
-                        pauseM = p1.breakDuration || "";
                         
-                        if(p1Out) { 
-                            duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - ((p1.breakDuration||0) * 60000)); 
-                            totM = formatDuration(duration1); 
-                        }
+                        arrMVal = getExcelTime(p1In);
+                        depMVal = getExcelTime(p1Out);
+                        pauseMVal = p1.breakDuration || 0;
                         
                         if (dayPunches.length > 1) {
                             const p2 = dayPunches[1]; 
                             const p2In = p2.punchInTime.toDate(); 
                             const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; 
-                            arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-                            depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; 
-                            pauseS = p2.breakDuration || "";
                             
-                            if(p2Out) { 
-                                duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - ((p2.breakDuration||0) * 60000)); 
-                                totS = formatDuration(duration2); 
-                            }
+                            arrSVal = getExcelTime(p2In);
+                            depSVal = getExcelTime(p2Out);
+                            pauseSVal = p2.breakDuration || 0;
                         }
                     }
-                    
-                    const totalDailyMs = duration1 + duration2;
-                    weeklyTotalMs += totalDailyMs;
-                    // CALCULATE DECIMAL HOURS FOR DAY (e.g. 1.5 for 1h30)
-                    const totalDailyDecimal = totalDailyMs > 0 ? parseFloat((totalDailyMs / (1000 * 60 * 60)).toFixed(2)) : "";
 
-                    rows.push([{v: weekNum, s: cellStyle},{v: dateStr, s: cellStyle},{v: arrM, s: cellStyle},{v: depM, s: cellStyle},{v: pauseM, s: cellStyle},{v: totM, s: cellStyle},{v: arrS, s: cellStyle},{v: depS, s: cellStyle},{v: pauseS, s: cellStyle},{v: totS, s: cellStyle},{v: totalDailyDecimal, s: { ...cellStyle, font: {bold: true} }}]);
+                    // EXCEL FORMULAS
+                    const r = currentRowIndex;
+                    // Total M (Time Format): (Dep - Arr) - (Pause_min / 1440)
+                    const formulaTotalM = `IF(AND(D${r}<>"",C${r}<>""),D${r}-C${r}-(E${r}/1440),0)`;
+                    // Total S (Time Format)
+                    const formulaTotalS = `IF(AND(H${r}<>"",G${r}<>""),H${r}-G${r}-(I${r}/1440),0)`;
+                    // Total Decimal (Number Format): (TotalM + TotalS) * 24
+                    const formulaTotalDec = `(F${r}+J${r})*24`;
+
+                    rows.push([
+                        {v: weekNum, s: cellStyle},
+                        {v: dateStr, s: cellStyle},
+                        {v: arrMVal, t: 'n', s: timeStyle}, // C: Arrivee M (Number + Time Style)
+                        {v: depMVal, t: 'n', s: timeStyle}, // D: Depart M (Number + Time Style)
+                        {v: pauseMVal, t: 'n', s: cellStyle}, // E: Pause M (Integer)
+                        {f: formulaTotalM, t: 'n', s: durationStyle}, // F: Total M (Duration Style)
+                        {v: arrSVal, t: 'n', s: timeStyle}, // G: Arrivee S
+                        {v: depSVal, t: 'n', s: timeStyle}, // H: Depart S
+                        {v: pauseSVal, t: 'n', s: cellStyle}, // I: Pause S
+                        {f: formulaTotalS, t: 'n', s: durationStyle}, // J: Total S
+                        {f: formulaTotalDec, t: 'n', s: decStyle}, // K: Total Decimal
+                        {v: '', s: cellStyle}, // L (Empty daily)
+                        {v: '', s: cellStyle}, // M (Empty daily)
+                        {v: '', s: cellStyle}  // N (Empty daily)
+                    ]);
+                    
+                    currentRowIndex++;
                 }
                 
                 if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
                 
                 const ws = XLSX.utils.aoa_to_sheet(rows); 
-                ws['!cols'] = [{wch:12}, {wch:22}, {wch:13}, {wch:13}, {wch:10}, {wch:13}, {wch:13}, {wch:13}, {wch:10}, {wch:13}, {wch:15}]; 
+                ws['!cols'] = [{wch:10}, {wch:12}, {wch:12}, {wch:12}, {wch:8}, {wch:12}, {wch:12}, {wch:12}, {wch:8}, {wch:12}, {wch:15}, {wch:10}, {wch:10}, {wch:10}]; 
                 XLSX.utils.book_append_sheet(wb, ws, emp.name.replace(/[*?\/\[\]]/g, '').slice(0, 25));
             });
             
-            XLSX.writeFile(wb, `Pointage_Decimaux_${selectedMonthVal}.xlsx`);
+            XLSX.writeFile(wb, `Pointage_Calculs_Auto_${selectedMonthVal}.xlsx`);
         };
 
         window.renderMonthPreview = () => { const mp = document.getElementById('admin-month-picker'); const c = document.getElementById('preview-records-container'); if(!mp.value) return; c.innerHTML = ''; const [y, m] = mp.value.split('-').map(Number); employees.forEach(emp => { const card = document.createElement('div'); card.className = "mb-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"; card.innerHTML = `<div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center"><span class="font-bold text-gray-700 text-lg">${emp.name}</span><span class="text-xs font-mono bg-white px-2 py-1 rounded border">${emp.code}</span></div><div class="overflow-x-auto"><table class="min-w-full border-collapse"><thead class="bg-gray-50 border-b border-gray-200"><tr><th class="preview-header">Sem</th><th class="preview-header">Date</th><th class="preview-header">Arr M</th><th class="preview-header">Dep M</th><th class="preview-header">Pau M</th><th class="preview-header">Tot M</th><th class="preview-header">Arr S</th><th class="preview-header">Dep S</th><th class="preview-header">Pau S</th><th class="preview-header">Tot S</th><th class="preview-header">Total</th></tr></thead><tbody class="bg-white"></tbody></table></div>`; c.appendChild(card); renderEmployeeRows(card.querySelector('tbody'), emp, y, m); }); };
