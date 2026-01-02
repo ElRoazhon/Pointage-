@@ -612,8 +612,42 @@
         </div>
     </div>
 
-    <!-- Admin/Manual Correction Modals (Hidden) -->
-    <div id="manual-correction-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm"><div class="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full"><h3 class="text-xl font-bold mb-4 text-gray-800" id="correction-modal-title">Modifier / Ajouter</h3><input type="hidden" id="edit-punch-id"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700">Employé</label><select id="edit-punch-employee" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-50"></select></div><div><label class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="edit-punch-date" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-gray-700">Heure Arrivée</label><input type="time" id="edit-punch-in" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div><div><label class="block text-sm font-medium text-gray-700">Heure Départ</label><input type="time" id="edit-punch-out" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div></div><div><label class="block text-sm font-medium text-gray-700">Pause (minutes)</label><input type="number" id="edit-punch-break" min="0" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div></div><div class="mt-6 flex justify-end space-x-3"><button onclick="document.getElementById('manual-correction-modal').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button><button onclick="saveManualPunch()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Enregistrer</button></div></div></div>
+    <!-- Admin/Manual Correction Modals (Restored & Updated) -->
+    <div id="manual-correction-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4 text-gray-800" id="correction-modal-title">Modifier / Ajouter</h3>
+            <input type="hidden" id="edit-punch-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Employé</label>
+                    <select id="edit-punch-employee" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-50"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Date</label>
+                    <input type="date" id="edit-punch-date" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Heure Arrivée</label>
+                        <input type="time" id="edit-punch-in" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Heure Départ</label>
+                        <input type="time" id="edit-punch-out" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Pause (minutes)</label>
+                    <input type="number" id="edit-punch-break" min="0" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="document.getElementById('manual-correction-modal').classList.add('hidden'); document.getElementById('manual-correction-modal').classList.remove('flex')" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
+                <button onclick="saveManualPunch()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="admin-login-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm"><div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col h-auto max-h-screen overflow-y-auto" id="admin-modal-content"><div class="text-center mb-4"><div class="mx-auto bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mb-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div><h3 class="text-xl font-bold text-gray-800">Accès Admin</h3></div><input id="admin-login-input" type="password" maxlength="8" readonly class="w-full p-3 border-2 border-gray-300 rounded-lg text-2xl text-center focus:border-blue-500 focus:outline-none mb-4 tracking-widest bg-white" placeholder="••••"><div class="numpad-grid select-none mb-4"><div onclick="typeNum('admin-login-input', '1')" class="numpad-btn">1</div><div onclick="typeNum('admin-login-input', '2')" class="numpad-btn">2</div><div onclick="typeNum('admin-login-input', '3')" class="numpad-btn">3</div><div onclick="typeNum('admin-login-input', '4')" class="numpad-btn">4</div><div onclick="typeNum('admin-login-input', '5')" class="numpad-btn">5</div><div onclick="typeNum('admin-login-input', '6')" class="numpad-btn">6</div><div onclick="typeNum('admin-login-input', '7')" class="numpad-btn">7</div><div onclick="typeNum('admin-login-input', '8')" class="numpad-btn">8</div><div onclick="typeNum('admin-login-input', '9')" class="numpad-btn">9</div><div onclick="clearNum('admin-login-input')" class="numpad-btn clear-btn">C</div><div onclick="typeNum('admin-login-input', '0')" class="numpad-btn">0</div><div onclick="verifyAdminCode()" class="numpad-btn action-btn">OK</div></div><button onclick="closeAdminModal()" class="w-full text-gray-500 font-medium py-2 hover:text-gray-700 border rounded-lg">Annuler</button><p id="admin-login-error" class="text-center mt-2 text-sm font-medium text-red-500 h-5"></p></div></div>
     
     <div id="toast-notification">Notification</div>
@@ -927,7 +961,133 @@
             renderEmployeeRows(tbody, currentEmployee, year, month);
         };
 
-        window.loadCorrectionData = () => { /* Standard logic */ const ec = document.getElementById('admin-correction-employee').value; const dv = document.getElementById('admin-correction-date').value; const tb = document.getElementById('correction-table-body'); tb.innerHTML = ''; if(!dv) return; const tds = new Date(dv).toDateString(); punches.filter(p => p.punchInTime && p.punchInTime.toDate().toDateString() === tds && (ec ? p.employeeCode === ec : true)).forEach(p => { const pi=p.punchInTime.toDate(); const po=p.punchOutTime?p.punchOutTime.toDate():null; tb.innerHTML+=`<tr><td class="px-4 py-2 text-sm">${p.employeeName}</td><td class="px-4 py-2 text-sm">${pi.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td class="px-4 py-2 text-sm">${po?po.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'...'}</td><td class="px-4 py-2 text-sm">${p.breakDuration||0}</td><td class="px-4 py-2 text-right"><button onclick="deletePunch('${p.id}')" class="text-red-600">Supprimer</button></td></tr>`; }); };
+        // NEW: Load Correction Data with Edit Button
+        window.loadCorrectionData = () => {
+            const empCode = document.getElementById('admin-correction-employee').value;
+            const dateVal = document.getElementById('admin-correction-date').value;
+            const tbody = document.getElementById('correction-table-body');
+            tbody.innerHTML = '';
+            
+            if (!dateVal) return;
+            const targetDateStr = new Date(dateVal).toDateString();
+            
+            const filteredPunches = punches.filter(p => { 
+                if (!p.punchInTime) return false;
+                const pDate = p.punchInTime.toDate(); 
+                return pDate.toDateString() === targetDateStr && (empCode ? p.employeeCode === empCode : true); 
+            });
+            
+            if (filteredPunches.length === 0) { 
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-sm text-gray-500 text-center italic">Aucun pointage ce jour.</td></tr>'; 
+                return; 
+            }
+            
+            filteredPunches.forEach(p => { 
+                const tr = document.createElement('tr'); 
+                const pi = p.punchInTime.toDate(); 
+                const po = p.punchOutTime ? p.punchOutTime.toDate() : null; 
+                tr.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-900">${p.employeeName}</td>
+                    <td class="px-4 py-2 text-sm text-gray-500">${pi.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td class="px-4 py-2 text-sm text-gray-500">${po?po.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}):'<span class="text-red-500">En cours</span>'}</td>
+                    <td class="px-4 py-2 text-sm text-gray-500">${p.breakDuration||0} min</td>
+                    <td class="px-4 py-2 text-right text-sm font-medium">
+                        <button onclick="openManualPunchModal('${p.id}')" class="text-blue-600 hover:text-blue-900 mr-3 font-medium text-sm">Modifier</button>
+                        <button onclick="deletePunch('${p.id}')" class="text-red-600 hover:text-red-900 font-medium text-sm">Supprimer</button>
+                    </td>`; 
+                tbody.appendChild(tr); 
+            });
+        };
+
+        // NEW: Open Manual Punch Modal (Shared for New/Edit)
+        window.openManualPunchModal = (punchId) => {
+            const modal = document.getElementById('manual-correction-modal');
+            const title = document.getElementById('correction-modal-title');
+            const empSelect = document.getElementById('edit-punch-employee');
+            const dateInput = document.getElementById('edit-punch-date');
+            const inInput = document.getElementById('edit-punch-in');
+            const outInput = document.getElementById('edit-punch-out');
+            const breakInput = document.getElementById('edit-punch-break');
+            const idInput = document.getElementById('edit-punch-id');
+            
+            let punchData = punchId ? punches.find(p => p.id === punchId) : null;
+            
+            if (punchData) { 
+                title.textContent = "Modifier le pointage"; 
+                idInput.value = punchData.id; 
+                empSelect.value = punchData.employeeCode; 
+                empSelect.disabled = true; 
+                
+                const pi = new Date(punchData.punchInTime.seconds * 1000); 
+                dateInput.value = getLocalDateInputValue(pi); 
+                inInput.value = pi.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); 
+                
+                if (punchData.punchOutTime) { 
+                    const po = new Date(punchData.punchOutTime.seconds * 1000); 
+                    outInput.value = po.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); 
+                } else {
+                    outInput.value = ''; 
+                }
+                breakInput.value = punchData.breakDuration || 0; 
+            } else { 
+                title.textContent = "Ajouter un pointage manuel"; 
+                idInput.value = ""; 
+                empSelect.disabled = false; 
+                empSelect.value = document.getElementById('admin-correction-employee').value || (employees.length > 0 ? employees[0].code : ""); 
+                dateInput.value = document.getElementById('admin-correction-date').value || getLocalDateInputValue(new Date()); 
+                inInput.value = "09:00"; 
+                outInput.value = "17:00"; 
+                breakInput.value = 0; 
+            }
+            modal.classList.remove('hidden'); 
+            modal.classList.add('flex');
+        };
+
+        // NEW: Save Manual Punch Logic
+        window.saveManualPunch = async () => {
+            const id = document.getElementById('edit-punch-id').value; 
+            const empCode = document.getElementById('edit-punch-employee').value; 
+            const dateStr = document.getElementById('edit-punch-date').value; 
+            const inStr = document.getElementById('edit-punch-in').value; 
+            const outStr = document.getElementById('edit-punch-out').value; 
+            const breakVal = parseInt(document.getElementById('edit-punch-break').value) || 0;
+            
+            if (!empCode || !dateStr || !inStr) { alert("Champs requis manquants."); return; }
+            
+            const empObj = employees.find(e => e.code === empCode); 
+            
+            const [y, mo, d] = dateStr.split('-').map(Number);
+            const [h, mi] = inStr.split(':').map(Number);
+            const punchInDate = new Date(y, mo - 1, d, h, mi);
+            
+            let punchOutDate = null;
+            if (outStr) {
+                const [hOut, mOut] = outStr.split(':').map(Number);
+                punchOutDate = new Date(y, mo - 1, d, hOut, mOut);
+                // Handle overnight
+                if (punchOutDate < punchInDate) punchOutDate.setDate(punchOutDate.getDate() + 1);
+            }
+
+            const data = { 
+                employeeCode: empCode, 
+                employeeName: empObj.name, 
+                punchInTime: Timestamp.fromDate(punchInDate), 
+                punchOutTime: punchOutDate ? Timestamp.fromDate(punchOutDate) : null, 
+                breakDuration: breakVal 
+            };
+            
+            try { 
+                if (id) await updateDoc(getDocRef('punches', id), data); 
+                else await addDoc(getColRef('punches'), data); 
+                
+                showToast("Enregistré !"); 
+                document.getElementById('manual-correction-modal').classList.add('hidden'); 
+                document.getElementById('manual-correction-modal').classList.remove('flex'); 
+            } catch (e) { 
+                alert("Erreur: " + e.message); 
+            }
+        };
+
         window.deletePunch = async(id) => { if(confirm("Supprimer ?")) await deleteDoc(getDocRef('punches', id)); };
         window.requestAdminAccess = () => { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-login-modal').classList.add('flex'); document.getElementById('admin-login-input').value=''; };
         window.closeAdminModal = () => { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-login-modal').classList.remove('flex'); };
