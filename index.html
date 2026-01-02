@@ -19,7 +19,7 @@
     <link rel="manifest" id="dynamic-manifest">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Utilisation de xlsx-js-style pour le style Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
@@ -28,7 +28,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         window.firebase = {
             initializeApp,
@@ -51,7 +51,8 @@
             orderBy,
             serverTimestamp,
             getDoc,
-            Timestamp
+            Timestamp,
+            enableIndexedDbPersistence
         };
     </script>
     <style>
@@ -89,20 +90,21 @@
             position: relative;
             height: 160px;
             overflow: hidden;
-            background: #f8fafc;
-            border-radius: 0.75rem;
-            border: 1px solid #e2e8f0;
+            background: #ffffff; /* White bg for clean look */
+            border-radius: 0 0 0.75rem 0.75rem; /* Rounded bottom only */
+            /* Border handled by parent now */
         }
         .wheel-highlight {
             position: absolute;
             top: 50%;
-            left: 0;
-            right: 0;
-            height: 40px;
-            margin-top: -20px;
-            background-color: #dbeafe;
-            border-top: 1px solid #93c5fd;
-            border-bottom: 1px solid #93c5fd;
+            left: 10%;
+            right: 10%;
+            height: 50px;
+            margin-top: -25px;
+            background-color: #f3f4f6;
+            border-top: 2px solid #e5e7eb;
+            border-bottom: 2px solid #e5e7eb;
+            border-radius: 8px;
             pointer-events: none;
             z-index: 0;
         }
@@ -110,21 +112,21 @@
             height: 100%;
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
-            padding-top: 60px; /* Aligns perfectly with highlight at top 50% - 20px */
-            padding-bottom: 60px;
+            padding-top: 55px; 
+            padding-bottom: 55px;
             position: relative;
             z-index: 10;
         }
         .wheel-item {
-            height: 40px;
+            height: 50px; /* Bigger items */
             display: flex;
             align-items: center;
             justify-content: center;
             scroll-snap-align: center;
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #64748b;
-            transition: color 0.2s, transform 0.2s;
+            font-size: 1.8rem; /* Bigger font */
+            font-weight: 700;
+            color: #94a3b8;
+            transition: all 0.2s;
         }
         
         .numpad-grid {
@@ -236,7 +238,7 @@
         @keyframes progress { from { width: 100%; } to { width: 0%; } }
         .progress-bar { animation: progress 5s linear forwards; }
         
-        /* Table Preview Styles - AGRANDI ET CLARIFIÉ */
+        /* Table Preview Styles */
         .preview-header { 
             background-color: #FFC000; 
             font-weight: bold; 
@@ -263,12 +265,6 @@
             font-size: 0.9rem;
             padding: 8px;
         }
-        .preview-total-row { 
-            background-color: #FFF2CC; 
-            font-weight: bold; 
-            text-align: center; 
-            font-size: 0.85rem; 
-        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -292,7 +288,7 @@
                      alt="Logo Pointage" 
                      class="h-48 w-auto object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 hidden">
                 
-                <!-- Fallback Icon (also clickable) -->
+                <!-- Fallback Icon -->
                 <div id="fallback-logo-icon" class="bg-blue-50 p-4 rounded-full text-blue-600 border border-blue-100 shadow-sm cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -305,17 +301,10 @@
                     <div class="loading-spinner"></div>
                 </div>
 
-                <!-- Hover Overlay -->
-                <div class="logo-overlay">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </div>
+                <div class="logo-overlay"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
             </div>
 
-            <h1 class="text-3xl font-bold text-gray-800 text-center">Système de Pointage d'Heure</h1>
-            <p class="text-xs text-gray-400 mt-2">Mode: Données Partagées (Cloud Public)</p>
+            <h1 class="text-3xl font-bold text-gray-800 text-center">Système de Pointage</h1>
         </div>
 
         <!-- Navigation Tabs -->
@@ -335,7 +324,7 @@
         <div id="view-punch" class="view-content">
             <div class="max-w-md mx-auto">
                 
-                <!-- STEP 1: LOGIN (Code Entry) -->
+                <!-- STEP 1: LOGIN -->
                 <div id="step-login" class="p-6 bg-blue-50 rounded-lg shadow-inner mb-8">
                     <p class="text-center text-lg font-medium text-blue-800 mb-4">Entrez votre code</p>
                     <input id="employee-code" type="text" maxlength="4" placeholder="••••" readonly class="input-4-digit w-full p-4 text-4xl border-2 border-blue-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 mb-6 text-gray-800">
@@ -357,22 +346,18 @@
                             </svg>
                         </div>
                     </div>
-                    <button onclick="verifyCodeAndShowMenu()" class="w-full btn-primary bg-blue-600 text-white font-bold py-4 rounded-xl text-xl shadow-lg hover:bg-blue-700 flex items-center justify-center">
-                        <span class="mr-2">VALIDER</span>
-                    </button>
-                    <p id="punch-message" class="text-center mt-4 text-sm font-medium h-6"></p>
                 </div>
 
-                <!-- STEP 2: EMPLOYEE DASHBOARD (Choice: Punch or History) -->
+                <!-- STEP 2: EMPLOYEE DASHBOARD -->
                 <div id="step-dashboard" class="hidden">
                     <div class="text-center mb-8">
                         <h2 id="dashboard-welcome" class="text-2xl font-bold text-gray-800">Bonjour</h2>
-                        <p class="text-sm text-gray-500">Que souhaitez-vous faire ?</p>
+                        <p class="text-sm text-gray-500">Choisissez une action</p>
                     </div>
                     
                     <div class="grid grid-cols-1 gap-6">
-                        <button onclick="onMenuPunch()" id="btn-punch-action" class="p-8 rounded-xl shadow-lg border-2 text-left transition-all transform active:scale-95 flex items-center justify-between group">
-                            <!-- JS will update class and text here (Green/Red) -->
+                        <button onclick="onMenuPunch()" id="btn-punch-action" class="p-8 rounded-xl shadow-lg border-4 text-left transition-all transform active:scale-95 flex items-center justify-between group">
+                            <!-- JS will update class and text here -->
                             <div class="flex items-center">
                                 <div id="btn-punch-icon" class="p-4 rounded-full mr-4 bg-gray-100">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -380,11 +365,11 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <span id="btn-punch-text" class="block text-xl font-bold text-gray-800">Pointer / Dépointer</span>
-                                    <span id="btn-punch-sub" class="text-sm text-gray-500">Chargement...</span>
+                                    <span id="btn-punch-text" class="block text-2xl font-bold text-gray-800 uppercase tracking-wide">Action</span>
+                                    <span id="btn-punch-sub" class="text-sm text-gray-600 font-medium">Statut...</span>
                                 </div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
@@ -398,7 +383,7 @@
                                 </div>
                                 <div>
                                     <span class="block text-xl font-bold text-gray-800">Voir mes heures</span>
-                                    <span class="text-sm text-gray-500">Consulter le tableau du mois</span>
+                                    <span class="text-sm text-gray-500">Historique complet</span>
                                 </div>
                             </div>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -407,11 +392,11 @@
                         </button>
                     </div>
 
-                    <button onclick="resetToCodeEntry()" class="w-full mt-8 py-3 text-gray-500 font-medium hover:text-red-600 flex items-center justify-center">
+                    <button onclick="resetToCodeEntry()" class="w-full mt-8 py-4 text-gray-500 font-bold hover:text-red-600 flex items-center justify-center bg-gray-50 rounded-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
                         </svg>
-                        Retour / Déconnexion
+                        DÉCONNEXION
                     </button>
                 </div>
 
@@ -426,7 +411,6 @@
                             Retour
                         </button>
                     </div>
-                    <!-- Hauteur augmentée à h-[70vh] pour une meilleure vue sur mobile/tablette -->
                     <div class="overflow-auto border border-gray-300 rounded-lg shadow-inner bg-white h-[70vh]">
                         <table class="min-w-full border-collapse">
                             <thead class="sticky top-0 z-10 shadow-sm">
@@ -460,18 +444,8 @@
              <!-- Manual Correction Tool -->
              <div class="mb-10 p-6 bg-white rounded-lg shadow-sm border border-orange-200">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-gray-800 flex items-center text-orange-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Corrections & Ajout Manuel
-                    </h3>
-                    <button onclick="openManualPunchModal(null)" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Nouvelle Entrée
-                    </button>
+                    <h3 class="text-xl font-bold text-gray-800 flex items-center text-orange-700">Corrections & Ajout Manuel</h3>
+                    <button onclick="openManualPunchModal(null)" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center">Nouvelle Entrée</button>
                 </div>
                 <div class="flex flex-col md:flex-row gap-4 mb-4 bg-orange-50 p-4 rounded-lg">
                     <div class="flex-1">
@@ -488,31 +462,24 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Employé</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Départ</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pause</th>
-                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
+                            <tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Employé</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Arrivée</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Départ</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pause</th><th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th></tr>
                         </thead>
                         <tbody id="correction-table-body" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
             </div>
-
-            <!-- Add Employee Form -->
-            <div class="p-6 bg-gray-50 rounded-lg border mb-8">
+            
+             <!-- Add Employee Form -->
+             <div class="p-6 bg-gray-50 rounded-lg border mb-8">
                 <h3 class="text-xl font-medium mb-4 text-gray-700">Ajouter un Nouvel Employé</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input id="new-employee-name" type="text" placeholder="Nom de l'employé" class="p-3 border rounded-lg focus:ring-blue-500 focus:border-blue-500">
                     <input id="new-employee-code" type="text" maxlength="4" placeholder="Code (4 chiffres)" class="p-3 border rounded-lg focus:ring-blue-500 focus:border-blue-500" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4)">
                     <button onclick="addEmployee()" class="btn-primary bg-green-600 text-white font-medium py-3 rounded-lg hover:bg-green-700">Ajouter</button>
                 </div>
-                <p id="admin-message" class="mt-2 text-sm text-red-600 h-5"></p>
             </div>
 
-            <!-- Employee List -->
+            <!-- RESTORED: Employee List -->
             <h3 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Liste des Employés</h3>
             <div id="employee-list-container" class="overflow-x-auto mb-8">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -523,42 +490,24 @@
 
             <!-- PREVIEW EXCEL TABLE -->
             <div class="mt-12 mb-10">
-                <!-- New Header Layout -->
                 <div class="flex flex-col md:flex-row md:items-end justify-between mb-4 border-b border-gray-200 pb-4 gap-4">
-                    <h3 class="text-xl font-semibold text-gray-700 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Aperçu Tableau Comptable
-                    </h3>
-                    
+                    <h3 class="text-xl font-semibold text-gray-700">Aperçu Tableau Comptable</h3>
                     <div class="flex flex-col sm:flex-row items-center gap-3">
                         <div class="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
                             <span class="text-xs font-bold text-gray-500 uppercase px-2">Mois</span>
                             <input type="month" id="admin-month-picker" class="bg-white border-none text-sm p-1 rounded focus:ring-0 text-gray-700 font-medium h-8" onchange="renderMonthPreview()">
                         </div>
-                        <button onclick="exportToExcel()" class="btn-primary bg-green-600 text-white font-bold py-1.5 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center shadow-sm text-sm h-10">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Excel
-                        </button>
+                        <button onclick="exportToExcel()" class="btn-primary bg-green-600 text-white font-bold py-1.5 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center shadow-sm text-sm h-10">Excel</button>
                     </div>
                 </div>
-                
-                <!-- NEW CONTAINER FOR SEPARATED TABLES -->
-                <div id="preview-records-container" class="space-y-8">
-                   <!-- Tables will be injected here by JS -->
-                </div>
-
+                <div id="preview-records-container" class="space-y-8"></div>
                 <div class="mt-4 flex justify-end">
-                    <button onclick="resetAllPunches()" class="text-red-600 hover:text-red-800 text-sm font-medium flex items-center border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-2 rounded shadow-sm transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Réinitialiser tout l'historique</button>
+                    <button onclick="resetAllPunches()" class="text-red-600 hover:text-red-800 text-sm font-medium flex items-center border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-2 rounded shadow-sm transition-colors">Réinitialiser tout l'historique</button>
                 </div>
             </div>
-
-            <!-- Admin Settings -->
-            <div class="mt-12 p-6 bg-gray-100 rounded-lg border border-gray-200">
-                <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>Paramètres Administrateur</h3>
+             <!-- Admin Settings -->
+             <div class="mt-12 p-6 bg-gray-100 rounded-lg border border-gray-200">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Paramètres Administrateur</h3>
                 <div class="flex items-center space-x-4">
                     <div class="flex-grow max-w-xs">
                         <label class="block text-xs font-bold text-gray-500 mb-1">Code d'accès Admin</label>
@@ -573,65 +522,79 @@
         </div>
     </div>
 
-    <!-- NEW: Modal for Manual Time Entry with SCROLL WHEEL -->
-    <div id="manual-time-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col h-auto max-h-screen overflow-y-auto">
-            <h3 id="manual-time-title" class="text-xl font-bold mb-6 text-gray-800 text-center">Confirmation Horaire</h3>
+    <!-- NEW: Modal for Manual Time Entry with SCROLL WHEEL AND COLORS -->
+    <div id="manual-time-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col h-auto overflow-hidden">
             
-            <div class="mb-4">
-                <label class="block text-sm font-bold text-gray-600 mb-2">Date</label>
-                <input type="date" id="manual-punch-date" class="w-full p-4 border-2 border-gray-200 rounded-lg text-center text-lg focus:border-blue-500 focus:ring-blue-500 outline-none transition-colors">
+            <!-- DYNAMIC HEADER -->
+            <div id="manual-time-header" class="p-6 text-white text-center shadow-md z-20 relative">
+                <h3 id="manual-time-title" class="text-3xl font-extrabold uppercase tracking-wider drop-shadow-sm">ACTION</h3>
+                <p id="manual-time-subtitle" class="text-white text-opacity-90 font-medium text-sm mt-1">Veuillez confirmer l'heure</p>
             </div>
+            
+            <div class="p-6">
+                <!-- Date Display -->
+                <div class="mb-4 text-center">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Date du pointage</label>
+                    <input type="date" id="manual-punch-date" class="w-full p-3 border-b-2 border-gray-200 text-center text-xl font-bold text-gray-700 focus:border-blue-500 outline-none transition-colors bg-transparent">
+                </div>
 
-            <!-- iOS STYLE SCROLL PICKER -->
-            <div class="mb-6">
-                <label class="block text-sm font-bold text-gray-600 mb-2">Heure</label>
-                <div class="wheel-container">
-                    <div class="wheel-highlight"></div>
-                    <div class="flex justify-center h-full relative z-10">
-                        <!-- Hour Wheel -->
-                        <div class="w-20 wheel-column no-scrollbar" id="hour-wheel">
-                            <!-- Populated by JS -->
-                        </div>
-                        <div class="flex items-center justify-center font-bold text-2xl text-gray-400 mx-2 z-10 pt-[2px]">:</div>
-                        <!-- Minute Wheel -->
-                        <div class="w-20 wheel-column no-scrollbar" id="minute-wheel">
-                            <!-- Populated by JS -->
+                <!-- iOS STYLE SCROLL PICKER -->
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 text-center">Sélectionnez l'heure</label>
+                    <div class="wheel-container border border-gray-200 rounded-xl">
+                        <div class="wheel-highlight"></div>
+                        <div class="flex justify-center h-full relative z-10">
+                            <!-- Hour Wheel -->
+                            <div class="w-24 wheel-column no-scrollbar" id="hour-wheel">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div class="flex items-center justify-center font-bold text-3xl text-gray-300 mx-1 z-10 pt-[2px]">:</div>
+                            <!-- Minute Wheel (Quarter Hours) -->
+                            <div class="w-24 wheel-column no-scrollbar" id="minute-wheel">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
                     </div>
+                    <button id="btn-set-now" onclick="setManualToNow()" class="w-full py-3 mt-4 text-sm font-bold uppercase tracking-wide rounded-lg transition-colors border-2">
+                        Heure Actuelle (Arrondie)
+                    </button>
                 </div>
-                <button onclick="setManualToNow()" class="w-full py-3 mt-2 text-xs font-bold text-blue-500 uppercase tracking-wide hover:bg-blue-50 rounded transition-colors">Remettre à maintenant</button>
-            </div>
-            
-            <!-- REMOVED BREAK INPUT FROM HERE, MOVED TO RED MODAL -->
 
-            <div class="flex space-x-3 mt-2">
-                <button onclick="closeManualTimeModal()" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-600 font-medium hover:bg-gray-50 transition-colors">Annuler</button>
-                <button onclick="confirmManualPunch()" class="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors">Valider</button>
+                <div class="flex space-x-3 mt-4">
+                    <button onclick="closeManualTimeModal()" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-500 font-bold hover:bg-gray-50 transition-colors">ANNULER</button>
+                    <button id="btn-confirm-time" onclick="confirmManualPunch()" class="flex-1 py-4 text-white rounded-lg font-bold shadow-lg transform active:scale-95 transition-all text-lg">VALIDER</button>
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- NEW: REDESIGNED BREAK SELECTION MODAL (Cleaner White) -->
+    <!-- BREAK SELECTION MODAL (5 MINUTE INCREMENTS) -->
     <div id="break-selection-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col animate-bounce-in">
-            <h3 class="text-xl font-bold mb-2 text-center text-gray-800">Temps de Pause ?</h3>
-            <p class="text-center text-gray-500 mb-6 text-sm">Entrez la durée de votre pause en minutes</p>
-            
-            <div class="flex items-center justify-center mb-8 select-none">
-                <button onclick="adjustBreakRed(-5)" class="p-4 bg-gray-100 rounded-l-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16 text-xl transition-colors">-</button>
-                <input type="number" id="red-punch-break" value="0" min="0" class="w-24 p-4 bg-white text-gray-800 border-y border-gray-200 text-center text-3xl font-bold focus:outline-none focus:border-blue-500">
-                <button onclick="adjustBreakRed(5)" class="p-4 bg-gray-100 rounded-r-lg hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16 text-xl transition-colors">+</button>
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col overflow-hidden animate-bounce-in">
+            <div class="bg-orange-500 p-6 text-white text-center shadow-md">
+                <h3 class="text-2xl font-bold uppercase tracking-wide">TEMPS DE PAUSE ?</h3>
+                <p class="text-white text-opacity-90 text-xs mt-1">Avez-vous pris une pause aujourd'hui ?</p>
             </div>
+            
+            <div class="p-8">
+                <div class="flex items-center justify-center mb-8 select-none">
+                    <!-- CHANGED TO 5 MIN INCREMENTS -->
+                    <button onclick="adjustBreakRed(-5)" class="p-4 bg-gray-100 rounded-l-xl hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16 text-xl transition-colors">-</button>
+                    <input type="number" id="red-punch-break" value="0" step="5" min="0" class="w-28 p-4 bg-white text-gray-800 border-y border-gray-200 text-center text-4xl font-bold focus:outline-none focus:border-blue-500">
+                    <button onclick="adjustBreakRed(5)" class="p-4 bg-gray-100 rounded-r-xl hover:bg-gray-200 border border-gray-200 font-bold text-gray-600 w-16 text-xl transition-colors">+</button>
+                </div>
+                <p class="text-center text-gray-400 text-xs mb-6 italic">Incréments de 5 minutes</p>
 
-            <div class="flex space-x-3">
-                <button onclick="document.getElementById('break-selection-modal').classList.add('hidden'); document.getElementById('break-selection-modal').classList.remove('flex');" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-600 font-medium hover:bg-gray-50 transition-colors">Retour</button>
-                <button onclick="confirmBreak()" class="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-colors">Valider</button>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('break-selection-modal').classList.add('hidden'); document.getElementById('break-selection-modal').classList.remove('flex');" class="flex-1 py-4 border border-gray-300 rounded-lg text-gray-600 font-bold hover:bg-gray-50 transition-colors">RETOUR</button>
+                    <button onclick="confirmBreak()" class="flex-1 py-4 bg-orange-600 text-white rounded-lg font-bold shadow-lg hover:bg-orange-700 transition-colors">TERMINER</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- NEW: Punch Success Modal -->
+    <!-- PUNCH SUCCESS MODAL -->
     <div id="punch-success-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-md">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden transform transition-all scale-105">
             <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6">
@@ -639,31 +602,25 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
-            <h3 class="text-2xl font-bold text-gray-900 mb-2">Succès !</h3>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">C'est noté !</h3>
             <p id="punch-success-message" class="text-lg text-gray-600 font-medium mb-6">Message de confirmation</p>
-            
             <button onclick="undoLastPunch()" class="w-full py-3 mb-4 bg-red-50 text-red-600 border border-red-100 rounded-lg font-bold text-sm hover:bg-red-100 flex items-center justify-center transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 Oups, je me suis trompé (Annuler)
             </button>
-
             <div class="w-full bg-gray-200 rounded-full h-1.5 mb-1"><div id="punch-progress-bar" class="bg-green-600 h-1.5 rounded-full" style="width: 100%"></div></div>
-            <p class="text-xs text-gray-400">Fermeture automatique...</p>
         </div>
     </div>
 
-    <!-- Modals (Admin Login, Manual Correction) remain the same... -->
-    <!-- (Included in previous files, kept for functionality but collapsed here) -->
+    <!-- Admin/Manual Correction Modals (Hidden) -->
     <div id="manual-correction-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm"><div class="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full"><h3 class="text-xl font-bold mb-4 text-gray-800" id="correction-modal-title">Modifier / Ajouter</h3><input type="hidden" id="edit-punch-id"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700">Employé</label><select id="edit-punch-employee" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-50"></select></div><div><label class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="edit-punch-date" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-gray-700">Heure Arrivée</label><input type="time" id="edit-punch-in" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div><div><label class="block text-sm font-medium text-gray-700">Heure Départ</label><input type="time" id="edit-punch-out" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div></div><div><label class="block text-sm font-medium text-gray-700">Pause (minutes)</label><input type="number" id="edit-punch-break" min="0" class="mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div></div><div class="mt-6 flex justify-end space-x-3"><button onclick="document.getElementById('manual-correction-modal').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button><button onclick="saveManualPunch()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Enregistrer</button></div></div></div>
     <div id="admin-login-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm"><div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col h-auto max-h-screen overflow-y-auto" id="admin-modal-content"><div class="text-center mb-4"><div class="mx-auto bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mb-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div><h3 class="text-xl font-bold text-gray-800">Accès Admin</h3></div><input id="admin-login-input" type="password" maxlength="8" readonly class="w-full p-3 border-2 border-gray-300 rounded-lg text-2xl text-center focus:border-blue-500 focus:outline-none mb-4 tracking-widest bg-white" placeholder="••••"><div class="numpad-grid select-none mb-4"><div onclick="typeNum('admin-login-input', '1')" class="numpad-btn">1</div><div onclick="typeNum('admin-login-input', '2')" class="numpad-btn">2</div><div onclick="typeNum('admin-login-input', '3')" class="numpad-btn">3</div><div onclick="typeNum('admin-login-input', '4')" class="numpad-btn">4</div><div onclick="typeNum('admin-login-input', '5')" class="numpad-btn">5</div><div onclick="typeNum('admin-login-input', '6')" class="numpad-btn">6</div><div onclick="typeNum('admin-login-input', '7')" class="numpad-btn">7</div><div onclick="typeNum('admin-login-input', '8')" class="numpad-btn">8</div><div onclick="typeNum('admin-login-input', '9')" class="numpad-btn">9</div><div onclick="clearNum('admin-login-input')" class="numpad-btn clear-btn">C</div><div onclick="typeNum('admin-login-input', '0')" class="numpad-btn">0</div><div onclick="verifyAdminCode()" class="numpad-btn action-btn">OK</div></div><button onclick="closeAdminModal()" class="w-full text-gray-500 font-medium py-2 hover:text-gray-700 border rounded-lg">Annuler</button><p id="admin-login-error" class="text-center mt-2 text-sm font-medium text-red-500 h-5"></p></div></div>
     
     <div id="toast-notification">Notification</div>
 
     <script type="module">
-        // ... (Imports and Config remain the same) ...
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp } = window.firebase;
+        // ... (Imports remain the same) ...
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp, enableIndexedDbPersistence } = window.firebase;
 
         let config = {};
         try { config = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); } catch(e) {}
@@ -676,19 +633,20 @@
         let punches = []; 
         let isAuthReady = false;
         let currentAdminCode = "1976"; 
-        let currentEmployee = null; // Store currently logged in employee for the dashboard
-        let lastCreatedPunchId = null; // Store ID for "Undo" feature
+        let currentEmployee = null;
+        let lastCreatedPunchId = null;
         
         const getColRef = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
         const getDocRef = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
 
-        const formatter = new Intl.DateTimeFormat('fr-FR', {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-            hour12: false
-        });
-
-        // Helper pour avoir la date format YYYY-MM-DD locale (pour les input date)
+        // Helper date utils
+        function formatDuration(ms) {
+            if (ms === undefined || ms === null) return 'N/A';
+            const totalSeconds = Math.floor(Math.abs(ms) / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${hours}h ${String(minutes).padStart(2,'0')}`;
+        }
         function getLocalDateInputValue(d) {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -696,6 +654,7 @@
             return `${year}-${month}-${day}`;
         }
 
+        // --- CORE FUNCTIONS (Toast, Numpad, Auth) ---
         window.showToast = (message) => {
             const toast = document.getElementById("toast-notification");
             toast.textContent = message;
@@ -704,117 +663,68 @@
         }
         window.typeNum = (inputId, num) => {
             const input = document.getElementById(inputId);
-            if (input) {
-                if (input.value.length < input.maxLength) {
-                    input.value += num;
-                    input.dispatchEvent(new Event('input'));
-                }
+            if (input && input.value.length < input.maxLength) {
+                input.value += num;
+                input.dispatchEvent(new Event('input'));
             }
         };
         window.clearNum = (inputId) => { const input = document.getElementById(inputId); if(input) input.value = ''; };
 
-        function formatDuration(ms) {
-            if (ms === undefined || ms === null) return 'N/A';
-            const sign = ms < 0 ? "-" : "";
-            const absMs = Math.abs(ms);
-            const totalSeconds = Math.floor(absMs / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            return sign + [hours, minutes, seconds].map(val => String(val).padStart(2, '0')).join(':');
-        }
-
+        // --- SUCCESS MODAL ---
         window.showSuccessModal = (message, punchId) => {
             const modal = document.getElementById('punch-success-modal');
-            const msgEl = document.getElementById('punch-success-message');
+            document.getElementById('punch-success-message').textContent = message;
+            lastCreatedPunchId = punchId;
             const bar = document.getElementById('punch-progress-bar');
-            msgEl.textContent = message;
-            lastCreatedPunchId = punchId; // Store for Undo
-            
             bar.classList.remove('progress-bar');
             void bar.offsetWidth; 
             bar.classList.add('progress-bar');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            
-            // Auto close timer
             if (window.successModalTimer) clearTimeout(window.successModalTimer);
-            window.successModalTimer = setTimeout(() => { 
-                modal.classList.add('hidden'); 
-                modal.classList.remove('flex'); 
-            }, 5000);
+            window.successModalTimer = setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 5000);
         }
-        
-        // FIXED: Undo Function Logic
+
+        // --- UNDO ---
         window.undoLastPunch = async () => {
-            if (!lastCreatedPunchId) {
-                console.error("No last punch ID to undo");
-                return;
-            }
-            // Confirmation removed by user request
-            // if (!confirm("Voulez-vous vraiment annuler ce pointage ?")) return;
-            
+            if (!lastCreatedPunchId) return;
             try {
                 const docRef = getDocRef('punches', lastCreatedPunchId);
                 const docSnap = await getDoc(docRef);
-                
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    
-                    // Logic to distinguish between undoing an IN or OUT punch
-                    // If punchOutTime exists, it means we just clocked OUT. We should clear it to stay clocked IN.
                     if (data.punchOutTime) {
                         await updateDoc(docRef, { punchOutTime: null, breakDuration: 0 });
-                        showToast("Dépointage annulé. Vous êtes toujours pointé.");
+                        showToast("Départ annulé. Vous êtes toujours pointé.");
                     } else {
-                        // If only punchInTime exists, we just clocked IN. Delete the whole record.
                         await deleteDoc(docRef);
-                        showToast("Pointage annulé.");
+                        showToast("Arrivée annulée.");
                     }
-                } else {
-                    showToast("Erreur: Pointage introuvable.");
                 }
-                
-                // Force Close modal immediately
-                if (window.successModalTimer) clearTimeout(window.successModalTimer);
                 document.getElementById('punch-success-modal').classList.add('hidden');
                 document.getElementById('punch-success-modal').classList.remove('flex');
-                
-                // If user is still "logged in", refresh dashboard state
-                if (currentEmployee) {
-                    verifyCodeAndShowMenu(); 
-                } else {
-                    resetToCodeEntry();
-                }
-                
-            } catch (e) {
-                console.error("Undo error", e);
-                alert("Erreur lors de l'annulation: " + e.message);
-            }
+                if (currentEmployee) verifyCodeAndShowMenu(); else resetToCodeEntry();
+            } catch (e) { console.error(e); }
         };
 
-        // --- INIT ---
+        // --- INITIALIZATION ---
         window.onload = async () => {
-            // Populate Scroll Wheels
+            // Populate Scroll Wheels (NEW Logic)
             populateWheels();
 
             try {
-                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                      document.getElementById('connection-status').textContent = "⚠️ CONFIGURATION MANQUANTE";
-                      return;
-                }
+                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) { document.getElementById('connection-status').textContent = "⚠️ CONFIGURATION MANQUANTE"; return; }
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                document.getElementById('connection-status').textContent = "Connexion...";
-                document.getElementById('connection-status').className = "font-bold text-blue-500";
+                
+                try { await enableIndexedDbPersistence(db); } catch (err) {}
 
+                document.getElementById('connection-status').textContent = "Connexion...";
+                
                 const initAuth = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                    else await signInAnonymously(auth);
                 };
                 await initAuth();
 
@@ -822,7 +732,7 @@
                     if (user) {
                         userId = user.uid;
                         isAuthReady = true;
-                        document.getElementById('connection-status').textContent = "Connecté (Cloud Public)";
+                        document.getElementById('connection-status').textContent = "Connecté (Cloud)";
                         document.getElementById('connection-status').className = "font-bold text-green-600";
                         startDataListeners();
                         fetchAdminCode(); 
@@ -838,237 +748,52 @@
                 document.getElementById('admin-month-picker').value = `${yyyy}-${mm}`;
 
             } catch (error) {
-                console.error("Erreur Firebase:", error);
-                document.getElementById('connection-status').textContent = "Erreur de Connexion";
+                console.error("Erreur:", error);
+                document.getElementById('connection-status').textContent = "Mode Hors Ligne";
                 handleFirebaseError(error);
             }
         };
 
-        // ... (Logo functions remain the same) ...
+        // --- LOGO & ADMIN UTILS (Standard) ---
         function resizeAndCompressImage(file, maxWidth, quality, callback) {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > maxWidth) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    // Use PNG to preserve transparency
-                    const dataUrl = canvas.toDataURL('image/png');
-                    callback(dataUrl);
-                };
-            };
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = function(event) { const img = new Image(); img.src = event.target.result; img.onload = function() { const canvas = document.createElement('canvas'); let width = img.width; let height = img.height; if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); callback(canvas.toDataURL('image/png')); }; };
         }
-
-        window.handleLogoUpload = (input) => {
-            const file = input.files[0];
-            if (!file) return;
-            document.getElementById('logo-loading').classList.remove('hidden');
-            resizeAndCompressImage(file, 400, 0.7, async (compressedBase64) => {
-                 try {
-                    await setDoc(getDocRef('settings', 'branding'), { logoBase64: compressedBase64, updatedAt: serverTimestamp() });
-                    showToast("Nouveau logo partagé enregistré !");
-                } catch(e) { console.error("Erreur logo:", e); alert("Erreur: " + e.message); } 
-                finally { document.getElementById('logo-loading').classList.add('hidden'); }
-            });
-        };
-
-        async function fetchAdminCode() {
-            try {
-                const docRef = getDocRef('settings', 'admin_config');
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) currentAdminCode = docSnap.data().code;
-                else await setDoc(docRef, { code: "1976" });
-                document.getElementById('setting-admin-code').value = currentAdminCode;
-            } catch (e) { console.log("Utilisation du code défaut.", e); }
-        }
-
-        function updateAppIcons(base64Image) {
-            if (!base64Image) return;
-            const linkIcon = document.getElementById('dynamic-favicon');
-            if (linkIcon) linkIcon.href = base64Image;
-            const linkApple = document.getElementById('dynamic-apple-icon');
-            if (linkApple) linkApple.href = base64Image;
-            
-            const manifest = { 
-                "name": "Pointage", 
-                "short_name": "Pointage", 
-                "start_url": window.location.href, // Dynamic URL
-                "display": "standalone", 
-                "background_color": "#ffffff", 
-                "theme_color": "#2563eb", 
-                "icons": [ 
-                    { "src": base64Image, "sizes": "192x192", "type": "image/png" }, 
-                    { "src": base64Image, "sizes": "512x512", "type": "image/png" } 
-                ] 
-            };
-            
-            // Encode manifest in Data URI to bypass Blob restrictions on some browsers
-            const stringManifest = JSON.stringify(manifest);
-            const manifestDataUri = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(stringManifest);
-            
-            const linkManifest = document.getElementById('dynamic-manifest');
-            if (linkManifest) linkManifest.setAttribute('href', manifestDataUri);
-        }
-
+        window.handleLogoUpload = (input) => { const file = input.files[0]; if (!file) return; document.getElementById('logo-loading').classList.remove('hidden'); resizeAndCompressImage(file, 400, 0.7, async (b64) => { try { await setDoc(getDocRef('settings', 'branding'), { logoBase64: b64, updatedAt: serverTimestamp() }); showToast("Logo mis à jour !"); } catch(e){} finally { document.getElementById('logo-loading').classList.add('hidden'); } }); };
+        async function fetchAdminCode() { try { const d = await getDoc(getDocRef('settings', 'admin_config')); if (d.exists()) currentAdminCode = d.data().code; } catch (e) {} }
+        
         function startDataListeners() {
             if (!isAuthReady) return;
-            
-            // LISTEN TO LOGO UPDATES
-            onSnapshot(getDocRef('settings', 'branding'), (doc) => {
-                if(doc.exists() && doc.data().logoBase64) {
-                    const logoImg = document.getElementById('app-logo');
-                    const fallback = document.getElementById('fallback-logo-icon');
-                    logoImg.src = doc.data().logoBase64;
-                    
-                    // FORCE VISIBILITY: In case previous error hid it
-                    logoImg.style.display = 'block'; 
-                    logoImg.classList.remove('hidden');
-                    
-                    fallback.classList.add('hidden');
-                    updateAppIcons(doc.data().logoBase64);
-                }
-            });
-
-            onSnapshot(getColRef('employees'), (snapshot) => {
-                employees = [];
-                const empSelect = document.getElementById('admin-correction-employee');
-                const editEmpSelect = document.getElementById('edit-punch-employee');
-                const currentVal = empSelect.value;
-                const currentEditVal = editEmpSelect.value;
-                empSelect.innerHTML = '<option value="">-- Tous les employés --</option>';
-                editEmpSelect.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const data = { id: doc.id, ...doc.data() };
-                    employees.push(data);
-                    const opt = document.createElement('option'); opt.value = data.code; opt.textContent = data.name; empSelect.appendChild(opt);
-                    const opt2 = document.createElement('option'); opt2.value = data.code; opt2.textContent = data.name; editEmpSelect.appendChild(opt2);
-                });
-                if(currentVal) empSelect.value = currentVal;
-                if(currentEditVal) editEmpSelect.value = currentEditVal;
-                renderEmployeeTable();
-                loadCorrectionData();
-                renderMonthPreview(); // Update preview when employees change
-            }, (error) => handleFirebaseError(error));
-
-            const q = query(getColRef('punches'), orderBy('punchInTime', 'desc'));
-            onSnapshot(q, (snapshot) => {
-                punches = [];
-                snapshot.forEach(doc => { punches.push({ id: doc.id, ...doc.data() }); });
-                // We no longer render simple punch table, we render preview table
-                loadCorrectionData();
-                renderMonthPreview(); // Update preview when punches change
-            }, (error) => handleFirebaseError(error));
+            onSnapshot(getDocRef('settings', 'branding'), (doc) => { if(doc.exists() && doc.data().logoBase64) { document.getElementById('app-logo').src = doc.data().logoBase64; document.getElementById('app-logo').style.display='block'; document.getElementById('app-logo').classList.remove('hidden'); document.getElementById('fallback-logo-icon').classList.add('hidden'); } });
+            onSnapshot(getColRef('employees'), (snapshot) => { employees = []; const s1 = document.getElementById('admin-correction-employee'); const s2 = document.getElementById('edit-punch-employee'); s1.innerHTML = '<option value="">-- Tous les employés --</option>'; s2.innerHTML = ''; snapshot.forEach(doc => { const d = { id: doc.id, ...doc.data() }; employees.push(d); const o1 = document.createElement('option'); o1.value = d.code; o1.textContent = d.name; s1.appendChild(o1); const o2 = document.createElement('option'); o2.value = d.code; o2.textContent = d.name; s2.appendChild(o2); }); renderEmployeeTable(); });
+            onSnapshot(query(getColRef('punches'), orderBy('punchInTime', 'desc')), (snapshot) => { punches = []; snapshot.forEach(doc => { punches.push({ id: doc.id, ...doc.data() }); }); loadCorrectionData(); renderMonthPreview(); });
         }
+        function handleFirebaseError(error) { if (navigator.onLine === false) { document.getElementById('connection-status').textContent = "Hors ligne (Local)"; } }
 
-        function handleFirebaseError(error) { console.error("Erreur détectée:", error); }
-
-        // --- EXCEL EXPORT & PREVIEW LOGIC ---
+        // --- EXCEL & PREVIEW (Standard) ---
         const getWeekNumber = (d) => { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7)); var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1)); return Math.ceil((((d - yearStart) / 86400000) + 1)/7); };
-        
-        // NEW: Shared function to generate table HTML for a list of employees
-        // Used by Admin Preview AND Employee Preview
         function renderEmployeeRows(tbodyElement, emp, year, month) {
-            if (!tbodyElement) return;
-            tbodyElement.innerHTML = '';
-
-            const daysInMonth = new Date(year, month, 0).getDate();
-
-            let currentWeekNum = null; 
-            let weeklyTotalMs = 0;
-
-            const pushWeekSummary = (weekNum) => {
-                 const totalStr = formatDuration(weeklyTotalMs);
-                 const row = document.createElement('tr');
-                 row.innerHTML = `<td class="preview-week-row">TOT SEM ${weekNum}</td><td colspan="8"></td><td class="preview-week-row">TOT HEBDO</td><td class="preview-week-row">${totalStr}</td>`;
-                 tbodyElement.appendChild(row);
-            };
-
+            if (!tbodyElement) return; tbodyElement.innerHTML = '';
+            const daysInMonth = new Date(year, month, 0).getDate(); let currentWeekNum = null; let weeklyTotalMs = 0;
+            const pushWeekSummary = (weekNum) => { const totalStr = formatDuration(weeklyTotalMs); const row = document.createElement('tr'); row.innerHTML = `<td class="preview-week-row">TOT SEM ${weekNum}</td><td colspan="8"></td><td class="preview-week-row">TOT HEBDO</td><td class="preview-week-row">${totalStr}</td>`; tbodyElement.appendChild(row); };
             for (let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(year, month - 1, d);
-                const weekNum = getWeekNumber(dateObj);
-                const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
-
-                if (currentWeekNum !== null && weekNum !== currentWeekNum) {
-                    pushWeekSummary(currentWeekNum);
-                    weeklyTotalMs = 0;
-                }
-                currentWeekNum = weekNum;
-
-                const dayKey = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const dayPunches = punches.filter(p => { 
-                    if (p.employeeCode !== emp.code || !p.punchInTime) return false;
-                    const pDate = p.punchInTime.toDate();
-                    
-                    // LOGIC FOR NIGHT SHIFT GROUPING IN TABLE
-                    const displayDate = new Date(pDate);
-                    if (displayDate.getHours() < 3) {
-                        displayDate.setDate(displayDate.getDate() - 1);
-                    }
-                    
-                    const pKey = `${displayDate.getFullYear()}-${String(displayDate.getMonth()+1).padStart(2,'0')}-${String(displayDate.getDate()).padStart(2,'0')}`;
-                    return pKey === dayKey; 
-                });
-                
+                const dateObj = new Date(year, month - 1, d); const weekNum = getWeekNumber(dateObj); const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
+                if (currentWeekNum !== null && weekNum !== currentWeekNum) { pushWeekSummary(currentWeekNum); weeklyTotalMs = 0; } currentWeekNum = weekNum;
+                const dayPunches = punches.filter(p => { if (p.employeeCode !== emp.code || !p.punchInTime) return false; const pDate = p.punchInTime.toDate(); const displayDate = new Date(pDate); if (displayDate.getHours() < 3) displayDate.setDate(displayDate.getDate() - 1); return `${displayDate.getFullYear()}-${String(displayDate.getMonth()+1).padStart(2,'0')}-${String(displayDate.getDate()).padStart(2,'0')}` === `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`; });
                 dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
-
-                let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; 
-                let duration1 = 0, duration2 = 0;
-
+                let arrM="", depM="", totM="", arrS="", depS="", totS="", totalDailyStr="00h 00"; let d1=0, d2=0;
                 if (dayPunches.length > 0) {
-                    const p1 = dayPunches[0]; 
-                    const p1In = p1.punchInTime.toDate(); 
-                    const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; 
-                    const p1Break = p1.breakDuration || 0;
-                    arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-                    depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
-                    pauseM = p1Break > 0 ? p1Break : "";
-                    if(p1Out) { duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - (p1Break * 60000)); totM = formatDuration(duration1); }
-
-                    if (dayPunches.length > 1) {
-                        const p2 = dayPunches[1]; 
-                        const p2In = p2.punchInTime.toDate(); 
-                        const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; 
-                        const p2Break = p2.breakDuration || 0;
-                        arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
-                        depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span class="text-red-500 text-xs">...</span>'; 
-                        pauseS = p2Break > 0 ? p2Break : "";
-                        if(p2Out) { duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - (p2Break * 60000)); totS = formatDuration(duration2); }
-                    }
-                    totalDailyStr = formatDuration(duration1 + duration2); 
-                    weeklyTotalMs += (duration1 + duration2);
+                    const p1 = dayPunches[0]; arrM = p1.punchInTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); if (p1.punchOutTime) { depM = p1.punchOutTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); d1 = Math.max(0, (p1.punchOutTime.toMillis() - p1.punchInTime.toMillis()) - ((p1.breakDuration||0)*60000)); totM = formatDuration(d1); } else depM = '<span class="text-orange-500">...</span>';
+                    if (dayPunches.length > 1) { const p2 = dayPunches[1]; arrS = p2.punchInTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); if (p2.punchOutTime) { depS = p2.punchOutTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); d2 = Math.max(0, (p2.punchOutTime.toMillis() - p2.punchInTime.toMillis()) - ((p2.breakDuration||0)*60000)); totS = formatDuration(d2); } else depS = '<span class="text-orange-500">...</span>'; }
+                    totalDailyStr = formatDuration(d1+d2); weeklyTotalMs += (d1+d2);
                 }
-
-                const tr = document.createElement('tr');
-                tr.className = d % 2 === 0 ? "bg-gray-50 hover:bg-yellow-50" : "bg-white hover:bg-yellow-50";
-                tr.innerHTML = `
-                    <td class="preview-cell">${weekNum}</td>
-                    <td class="preview-cell font-medium">${dateStr}</td>
-                    <td class="preview-cell">${arrM}</td>
-                    <td class="preview-cell">${depM}</td>
-                    <td class="preview-cell text-xs text-gray-400">${pauseM}</td>
-                    <td class="preview-cell font-bold">${totM}</td>
-                    <td class="preview-cell">${arrS}</td>
-                    <td class="preview-cell">${depS}</td>
-                    <td class="preview-cell text-xs text-gray-400">${pauseS}</td>
-                    <td class="preview-cell font-bold">${totS}</td>
-                    <td class="preview-cell font-bold text-blue-800">${totalDailyStr !== "00:00:00" ? totalDailyStr : ""}</td>
-                `;
-                tbodyElement.appendChild(tr);
+                const tr = document.createElement('tr'); tr.className = d % 2 === 0 ? "bg-gray-50 hover:bg-yellow-50" : "bg-white hover:bg-yellow-50";
+                tr.innerHTML = `<td class="preview-cell">${weekNum}</td><td class="preview-cell font-medium">${dateStr}</td><td class="preview-cell">${arrM}</td><td class="preview-cell">${depM}</td><td class="preview-cell text-xs text-gray-400">${dayPunches[0]?.breakDuration||""}</td><td class="preview-cell font-bold">${totM}</td><td class="preview-cell">${arrS}</td><td class="preview-cell">${depS}</td><td class="preview-cell text-xs text-gray-400">${dayPunches[1]?.breakDuration||""}</td><td class="preview-cell font-bold">${totS}</td><td class="preview-cell font-bold text-blue-800">${totalDailyStr}</td>`; tbodyElement.appendChild(tr);
             }
-            if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
+            if (currentWeekNum !== null) pushWeekSummary(currentWeekNum);
         }
-
+        
+        // --- UPDATED EXCEL EXPORT (DECIMAL HOURS) ---
         window.exportToExcel = () => {
             const monthPicker = document.getElementById('admin-month-picker');
             const selectedMonthVal = monthPicker.value;
@@ -1077,6 +802,8 @@
             const [selYear, selMonth] = selectedMonthVal.split('-').map(Number);
             const daysInMonth = new Date(selYear, selMonth, 0).getDate();
             const wb = XLSX.utils.book_new();
+            
+            // Styles
             const headerStyle = { font: { bold: true, color: { rgb: "000000" } }, fill: { fgColor: { rgb: "FFC000" } }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const cellStyle = { alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const totalRowStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFF2CC" } }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
@@ -1084,167 +811,132 @@
             
             employees.forEach(emp => {
                 const rows = [];
-                rows.push([{v: 'N° Semaine', s: headerStyle},{v: 'Date', s: headerStyle},{v: 'Arrivée M', s: headerStyle},{v: 'Départ M', s: headerStyle},{v: 'Pause M', s: headerStyle},{v: 'Total M', s: headerStyle},{v: 'Arrivée S', s: headerStyle},{v: 'Départ S', s: headerStyle},{v: 'Pause S', s: headerStyle},{v: 'Total S', s: headerStyle},{v: 'Total Jour', s: headerStyle}]);
-                let currentWeekNum = null; let weeklyTotalMs = 0;
+                // Header
+                rows.push([{v: 'N° Semaine', s: headerStyle},{v: 'Date', s: headerStyle},{v: 'Arrivée M', s: headerStyle},{v: 'Départ M', s: headerStyle},{v: 'Pause M', s: headerStyle},{v: 'Total M', s: headerStyle},{v: 'Arrivée S', s: headerStyle},{v: 'Départ S', s: headerStyle},{v: 'Pause S', s: headerStyle},{v: 'Total S', s: headerStyle},{v: 'Total Jour (h.cent)', s: headerStyle}]);
+                
+                let currentWeekNum = null; 
+                let weeklyTotalMs = 0;
                 
                 const pushWeekSummary = (weekNum) => {
-                     const totalHours = weeklyTotalMs / (1000 * 60 * 60); let h_norm = 0, h_10 = 0, h_20 = 0, h_50 = 0; let remainder = totalHours;
-                     if (remainder <= 35) { h_norm = remainder; remainder = 0; } else { h_norm = 35; remainder -= 35; }
-                     if (remainder > 0) { const chunk = Math.min(remainder, 4); h_10 = chunk; remainder -= chunk; }
-                     if (remainder > 0) { const chunk = Math.min(remainder, 4); h_20 = chunk; remainder -= chunk; }
-                     if (remainder > 0) { h_50 = remainder; }
-                     const totalStr = formatDuration(weeklyTotalMs);
-                     rows.push([{v: `TOTAL SEMAINE ${weekNum}`, s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: 'TOTAL HEBDO:', s: weekSummaryStyle},{v: totalStr, s: weekSummaryStyle}]);
-                     rows.push([{v: 'Détail HS (HCR):', s: totalRowStyle},{v: `Normales: ${Number(h_norm.toFixed(2))}h`, s: totalRowStyle},{v: `HS 10%: ${Number(h_10.toFixed(2))}h`, s: totalRowStyle},{v: '', s: totalRowStyle},{v: `HS 20%: ${Number(h_20.toFixed(2))}h`, s: totalRowStyle},{v: '', s: totalRowStyle},{v: `HS 50%: ${Number(h_50.toFixed(2))}h`, s: totalRowStyle},{v: '', s: totalRowStyle},{v: '', s: totalRowStyle},{v: '', s: totalRowStyle},{v: '', s: totalRowStyle}]);
+                     // CALCULATE DECIMAL HOURS FOR WEEK
+                     const totalDecimalHours = parseFloat((weeklyTotalMs / (1000 * 60 * 60)).toFixed(2));
+                     
+                     rows.push([{v: `TOTAL SEM ${weekNum}`, s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: '', s: weekSummaryStyle},{v: 'TOTAL HEBDO:', s: weekSummaryStyle},{v: totalDecimalHours, s: weekSummaryStyle}]);
                      rows.push([null]); 
                 };
                 
                 for (let d = 1; d <= daysInMonth; d++) {
-                    const dateObj = new Date(selYear, selMonth - 1, d); const weekNum = getWeekNumber(dateObj); const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
+                    const dateObj = new Date(selYear, selMonth - 1, d); 
+                    const weekNum = getWeekNumber(dateObj); 
+                    const dateStr = dateObj.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'});
+                    
                     if (currentWeekNum !== null && weekNum !== currentWeekNum) { pushWeekSummary(currentWeekNum); weeklyTotalMs = 0; }
                     currentWeekNum = weekNum;
                     
-                    const dayKey = `${selYear}-${String(selMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                     const dayPunches = punches.filter(p => { 
                         if (p.employeeCode !== emp.code || !p.punchInTime) return false;
                         const pDate = p.punchInTime.toDate(); 
-                        
-                        // LOGIC FOR NIGHT SHIFT GROUPING IN EXCEL
                         const displayDate = new Date(pDate);
-                        if (displayDate.getHours() < 3) {
-                             displayDate.setDate(displayDate.getDate() - 1);
-                        }
-                        
+                        if (displayDate.getHours() < 3) displayDate.setDate(displayDate.getDate() - 1);
                         const pKey = `${displayDate.getFullYear()}-${String(displayDate.getMonth()+1).padStart(2,'0')}-${String(displayDate.getDate()).padStart(2,'0')}`; 
-                        return pKey === dayKey; 
+                        const dKey = `${selYear}-${String(selMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                        return pKey === dKey; 
                     });
+                    
                     dayPunches.sort((a,b) => a.punchInTime.toMillis() - b.punchInTime.toMillis());
                     
-                    let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "", totalDailyStr = "00:00:00"; let duration1 = 0, duration2 = 0;
+                    let arrM = "", depM = "", pauseM = "", totM = "", arrS = "", depS = "", pauseS = "", totS = "";
+                    let duration1 = 0, duration2 = 0;
+                    
                     if (dayPunches.length > 0) {
-                        const p1 = dayPunches[0]; const p1In = p1.punchInTime.toDate(); const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; const p1Break = p1.breakDuration || 0;
-                        arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; pauseM = p1Break > 0 ? p1Break : "";
-                        if(p1Out) { duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - (p1Break * 60000)); totM = formatDuration(duration1); }
+                        const p1 = dayPunches[0]; 
+                        const p1In = p1.punchInTime.toDate(); 
+                        const p1Out = p1.punchOutTime ? p1.punchOutTime.toDate() : null; 
+                        arrM = p1In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
+                        depM = p1Out ? p1Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; 
+                        pauseM = p1.breakDuration || "";
+                        
+                        if(p1Out) { 
+                            duration1 = Math.max(0, (p1Out.getTime() - p1In.getTime()) - ((p1.breakDuration||0) * 60000)); 
+                            totM = formatDuration(duration1); 
+                        }
                         
                         if (dayPunches.length > 1) {
-                            const p2 = dayPunches[1]; const p2In = p2.punchInTime.toDate(); const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; const p2Break = p2.breakDuration || 0;
+                            const p2 = dayPunches[1]; 
+                            const p2In = p2.punchInTime.toDate(); 
+                            const p2Out = p2.punchOutTime ? p2.punchOutTime.toDate() : null; 
                             arrS = p2In.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); 
                             depS = p2Out ? p2Out.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "En cours"; 
-                            pauseS = p2Break > 0 ? p2Break : "";
-                            if(p2Out) { duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - (p2Break * 60000)); totS = formatDuration(duration2); }
+                            pauseS = p2.breakDuration || "";
+                            
+                            if(p2Out) { 
+                                duration2 = Math.max(0, (p2Out.getTime() - p2In.getTime()) - ((p2.breakDuration||0) * 60000)); 
+                                totS = formatDuration(duration2); 
+                            }
                         }
-                        totalDailyStr = formatDuration(duration1 + duration2); weeklyTotalMs += (duration1 + duration2);
                     }
-                    rows.push([{v: weekNum, s: cellStyle},{v: dateStr, s: cellStyle},{v: arrM, s: cellStyle},{v: depM, s: cellStyle},{v: pauseM, s: cellStyle},{v: totM, s: { ...cellStyle, font: {bold: true} }},{v: arrS, s: cellStyle},{v: depS, s: cellStyle},{v: pauseS, s: cellStyle},{v: totS, s: { ...cellStyle, font: {bold: true} }},{v: totalDailyStr, s: { ...cellStyle, font: {bold: true} }}]);
+                    
+                    const totalDailyMs = duration1 + duration2;
+                    weeklyTotalMs += totalDailyMs;
+                    // CALCULATE DECIMAL HOURS FOR DAY (e.g. 1.5 for 1h30)
+                    const totalDailyDecimal = totalDailyMs > 0 ? parseFloat((totalDailyMs / (1000 * 60 * 60)).toFixed(2)) : "";
+
+                    rows.push([{v: weekNum, s: cellStyle},{v: dateStr, s: cellStyle},{v: arrM, s: cellStyle},{v: depM, s: cellStyle},{v: pauseM, s: cellStyle},{v: totM, s: cellStyle},{v: arrS, s: cellStyle},{v: depS, s: cellStyle},{v: pauseS, s: cellStyle},{v: totS, s: cellStyle},{v: totalDailyDecimal, s: { ...cellStyle, font: {bold: true} }}]);
                 }
-                if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
-                const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{wch:12}, {wch:22}, {wch:13}, {wch:13}, {wch:10}, {wch:13}, {wch:13}, {wch:13}, {wch:10}, {wch:13}, {wch:15}]; XLSX.utils.book_append_sheet(wb, ws, emp.name.replace(/[*?\/\[\]]/g, '').slice(0, 25));
-            });
-            XLSX.writeFile(wb, `Pointage_HCR_${selectedMonthVal}.xlsx`);
-        };
-
-        // --- PREVIEW RENDER FUNCTION (ADMIN) ---
-        window.renderMonthPreview = () => {
-             const monthPicker = document.getElementById('admin-month-picker');
-             const container = document.getElementById('preview-records-container');
-             const selectedMonthVal = monthPicker.value;
-
-             if (!selectedMonthVal) return;
-             
-             // Clear existing cards
-             container.innerHTML = '';
-             
-             const [selYear, selMonth] = selectedMonthVal.split('-').map(Number);
-             
-             if (employees.length === 0) {
-                 container.innerHTML = '<div class="text-center py-8 text-gray-500 italic">Aucun employé enregistré.</div>';
-                 return;
-             }
-
-             // Generate a CARD for each employee
-             employees.forEach(emp => {
-                const card = document.createElement('div');
-                card.className = "mb-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden";
-                card.innerHTML = `
-                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                        <span class="font-bold text-gray-700 text-lg">${emp.name}</span>
-                        <span class="text-xs font-mono bg-white px-2 py-1 rounded border">${emp.code}</span>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full border-collapse">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="preview-header">Sem</th>
-                                    <th class="preview-header">Date</th>
-                                    <th class="preview-header">Arr M</th>
-                                    <th class="preview-header">Dep M</th>
-                                    <th class="preview-header">Pau M</th>
-                                    <th class="preview-header">Tot M</th>
-                                    <th class="preview-header">Arr S</th>
-                                    <th class="preview-header">Dep S</th>
-                                    <th class="preview-header">Pau S</th>
-                                    <th class="preview-header">Tot S</th>
-                                    <th class="preview-header">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white">
-                                <tr><td colspan="11" class="text-center py-4 text-gray-400">Chargement...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                container.appendChild(card);
                 
-                // Render data into the specific tbody for this card
-                const tbody = card.querySelector('tbody');
-                renderEmployeeRows(tbody, emp, selYear, selMonth);
-             });
+                if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
+                
+                const ws = XLSX.utils.aoa_to_sheet(rows); 
+                ws['!cols'] = [{wch:12}, {wch:22}, {wch:13}, {wch:13}, {wch:10}, {wch:13}, {wch:13}, {wch:13}, {wch:10}, {wch:13}, {wch:15}]; 
+                XLSX.utils.book_append_sheet(wb, ws, emp.name.replace(/[*?\/\[\]]/g, '').slice(0, 25));
+            });
+            
+            XLSX.writeFile(wb, `Pointage_Decimaux_${selectedMonthVal}.xlsx`);
         };
 
-        // --- GENERAL LOGIC ---
-        window.loadCorrectionData = () => {
-            const empCode = document.getElementById('admin-correction-employee').value; const dateVal = document.getElementById('admin-correction-date').value; const tbody = document.getElementById('correction-table-body'); tbody.innerHTML = '';
-            if (!dateVal) return; const targetDateStr = new Date(dateVal).toDateString();
-            const filteredPunches = punches.filter(p => { if (!p.punchInTime) return false; const pDate = p.punchInTime.toDate(); return pDate.toDateString() === targetDateStr && (empCode ? p.employeeCode === empCode : true); });
-            if (filteredPunches.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-2 text-sm text-gray-500 text-center italic">Aucun pointage ce jour.</td></tr>'; return; }
-            filteredPunches.forEach(p => { const tr = document.createElement('tr'); const pi = p.punchInTime.toDate(); const po = p.punchOutTime ? p.punchOutTime.toDate() : null; tr.innerHTML = `<td class="px-4 py-2 text-sm text-gray-900">${p.employeeName}</td><td class="px-4 py-2 text-sm text-gray-500">${pi.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td><td class="px-4 py-2 text-sm text-gray-500">${po?po.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}):'<span class="text-red-500">En cours</span>'}</td><td class="px-4 py-2 text-sm text-gray-500">${p.breakDuration||0} min</td><td class="px-4 py-2 text-right text-sm font-medium"><button onclick="openManualPunchModal('${p.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2">Modifier</button><button onclick="deletePunch('${p.id}')" class="text-red-600 hover:text-red-900">Supprimer</button></td>`; tbody.appendChild(tr); });
+        window.renderMonthPreview = () => { const mp = document.getElementById('admin-month-picker'); const c = document.getElementById('preview-records-container'); if(!mp.value) return; c.innerHTML = ''; const [y, m] = mp.value.split('-').map(Number); employees.forEach(emp => { const card = document.createElement('div'); card.className = "mb-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"; card.innerHTML = `<div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center"><span class="font-bold text-gray-700 text-lg">${emp.name}</span><span class="text-xs font-mono bg-white px-2 py-1 rounded border">${emp.code}</span></div><div class="overflow-x-auto"><table class="min-w-full border-collapse"><thead class="bg-gray-50 border-b border-gray-200"><tr><th class="preview-header">Sem</th><th class="preview-header">Date</th><th class="preview-header">Arr M</th><th class="preview-header">Dep M</th><th class="preview-header">Pau M</th><th class="preview-header">Tot M</th><th class="preview-header">Arr S</th><th class="preview-header">Dep S</th><th class="preview-header">Pau S</th><th class="preview-header">Tot S</th><th class="preview-header">Total</th></tr></thead><tbody class="bg-white"></tbody></table></div>`; c.appendChild(card); renderEmployeeRows(card.querySelector('tbody'), emp, y, m); }); };
+
+        // --- ADMIN HELPERS ---
+        // RESTORED: Employee Table Functions
+        window.deleteEmployee = async (id, name) => { if(confirm(`Supprimer l'employé ${name} ?`)) await deleteDoc(getDocRef('employees', id)); };
+
+        window.renderEmployeeTable = () => { 
+            const b = document.getElementById('employee-table-body'); 
+            if(!b) return; 
+            b.innerHTML=''; 
+            employees.forEach(e=>{ 
+                b.innerHTML+=`<tr class="hover:bg-gray-50"><td class="px-6 py-3 text-sm text-gray-900">${e.name}</td><td class="px-6 py-3 text-sm text-gray-500">${e.code}</td><td class="px-6 py-3 text-right"><button onclick="deleteEmployee('${e.id}','${e.name}')" class="text-red-600 hover:text-red-900 font-medium text-sm">Supprimer</button></td></tr>`; 
+            }); 
         };
 
-        window.deletePunch = async (id) => { if(!id) return; if(confirm("Supprimer ?")) try{ await deleteDoc(getDocRef('punches', id)); showToast("Supprimé !"); }catch(e){console.error(e);} };
-        window.openManualPunchModal = (punchId) => {
-            const modal = document.getElementById('manual-correction-modal'); const title = document.getElementById('correction-modal-title'); const empSelect = document.getElementById('edit-punch-employee'); const dateInput = document.getElementById('edit-punch-date'); const inInput = document.getElementById('edit-punch-in'); const outInput = document.getElementById('edit-punch-out'); const breakInput = document.getElementById('edit-punch-break'); const idInput = document.getElementById('edit-punch-id');
-            let punchData = punchId ? punches.find(p => p.id === punchId) : null;
-            if (punchData) { title.textContent = "Modifier le pointage"; idInput.value = punchData.id; empSelect.value = punchData.employeeCode; empSelect.disabled = true; const pi = new Date(punchData.punchInTime.seconds * 1000); dateInput.value = getLocalDateInputValue(pi); inInput.value = pi.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); if (punchData.punchOutTime) { const po = new Date(punchData.punchOutTime.seconds * 1000); outInput.value = po.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}); } else outInput.value = ''; breakInput.value = punchData.breakDuration || 0; } 
-            else { title.textContent = "Ajouter un pointage manuel"; idInput.value = ""; empSelect.disabled = false; empSelect.value = document.getElementById('admin-correction-employee').value || (employees.length > 0 ? employees[0].code : ""); dateInput.value = document.getElementById('admin-correction-date').value || getLocalDateInputValue(new Date()); inInput.value = "09:00"; outInput.value = "17:00"; breakInput.value = 0; }
-            modal.classList.remove('hidden'); modal.classList.add('flex');
-        };
-        window.saveManualPunch = async () => {
-            const id = document.getElementById('edit-punch-id').value; const empCode = document.getElementById('edit-punch-employee').value; const dateStr = document.getElementById('edit-punch-date').value; const inStr = document.getElementById('edit-punch-in').value; const outStr = document.getElementById('edit-punch-out').value; const breakVal = parseInt(document.getElementById('edit-punch-break').value) || 0;
-            if (!empCode || !dateStr || !inStr) { alert("Champs requis manquants."); return; }
-            const empObj = employees.find(e => e.code === empCode); 
+        // RESTORED: Employee History Function (used in Employee View)
+        window.renderEmployeeHistory = () => {
+            const picker = document.getElementById('employee-month-picker');
+            if (!picker || !currentEmployee) return;
             
-            // FIX: Manual Date Construction to avoid UTC offset
-            const [y, mo, d] = dateStr.split('-').map(Number);
-            const [h, mi] = inStr.split(':').map(Number);
-            const punchInDate = new Date(y, mo - 1, d, h, mi);
-            
-            let punchOutDate = null;
-            if (outStr) {
-                const [hOut, mOut] = outStr.split(':').map(Number);
-                punchOutDate = new Date(y, mo - 1, d, hOut, mOut);
-                if (punchOutDate < punchInDate) punchOutDate.setDate(punchOutDate.getDate() + 1);
+            // Default to current month if empty
+            if (!picker.value) {
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth() + 1).padStart(2, '0');
+                picker.value = `${y}-${m}`;
             }
-
-            const data = { employeeCode: empCode, employeeName: empObj.name, punchInTime: Timestamp.fromDate(punchInDate), punchOutTime: punchOutDate ? Timestamp.fromDate(punchOutDate) : null, breakDuration: breakVal };
-            try { if (id) await updateDoc(getDocRef('punches', id), data); else await addDoc(getColRef('punches'), data); showToast("Enregistré !"); document.getElementById('manual-correction-modal').classList.add('hidden'); document.getElementById('manual-correction-modal').classList.remove('flex'); } catch (e) { alert("Erreur: " + e.message); }
+            
+            const [year, month] = picker.value.split('-').map(Number);
+            const tbody = document.getElementById('employee-history-body');
+            renderEmployeeRows(tbody, currentEmployee, year, month);
         };
 
+        window.loadCorrectionData = () => { /* Standard logic */ const ec = document.getElementById('admin-correction-employee').value; const dv = document.getElementById('admin-correction-date').value; const tb = document.getElementById('correction-table-body'); tb.innerHTML = ''; if(!dv) return; const tds = new Date(dv).toDateString(); punches.filter(p => p.punchInTime && p.punchInTime.toDate().toDateString() === tds && (ec ? p.employeeCode === ec : true)).forEach(p => { const pi=p.punchInTime.toDate(); const po=p.punchOutTime?p.punchOutTime.toDate():null; tb.innerHTML+=`<tr><td class="px-4 py-2 text-sm">${p.employeeName}</td><td class="px-4 py-2 text-sm">${pi.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td class="px-4 py-2 text-sm">${po?po.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'...'}</td><td class="px-4 py-2 text-sm">${p.breakDuration||0}</td><td class="px-4 py-2 text-right"><button onclick="deletePunch('${p.id}')" class="text-red-600">Supprimer</button></td></tr>`; }); };
+        window.deletePunch = async(id) => { if(confirm("Supprimer ?")) await deleteDoc(getDocRef('punches', id)); };
         window.requestAdminAccess = () => { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-login-modal').classList.add('flex'); document.getElementById('admin-login-input').value=''; };
         window.closeAdminModal = () => { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-login-modal').classList.remove('flex'); };
-        window.verifyAdminCode = () => { if(document.getElementById('admin-login-input').value === currentAdminCode) { closeAdminModal(); showView('admin'); loadCorrectionData(); } else { document.getElementById('admin-login-error').textContent="Erreur!"; }};
-        window.saveNewAdminCode = async () => { try { await setDoc(getDocRef('settings', 'admin_config'), {code: document.getElementById('setting-admin-code').value}); currentAdminCode=document.getElementById('setting-admin-code').value; document.getElementById('settings-message').textContent="OK"; } catch(e){} };
-        window.resetAllPunches = async () => { if (!confirm("SUPPRIMER TOUT L'HISTORIQUE ?")) return; const c = prompt("Code Admin:"); if (c !== currentAdminCode) return alert("Code faux"); try { const s = await getDocs(query(getColRef('punches'))); await Promise.all(s.docs.map(d=>deleteDoc(d.ref))); showToast("Reset OK"); } catch(e){ alert(e.message); } };
+        window.verifyAdminCode = () => { if(document.getElementById('admin-login-input').value === currentAdminCode) { closeAdminModal(); showView('admin'); loadCorrectionData(); } else document.getElementById('admin-login-error').textContent="Erreur!"; };
+        window.saveNewAdminCode = async() => { await setDoc(getDocRef('settings', 'admin_config'), {code: document.getElementById('setting-admin-code').value}); };
+        window.resetAllPunches = async() => { if(confirm("RESET TOTAL ?") && prompt("Code:")===currentAdminCode) { const s=await getDocs(query(getColRef('punches'))); s.forEach(d=>deleteDoc(d.ref)); } };
+        window.addEmployee = async() => { const n=document.getElementById('new-employee-name').value; const c=document.getElementById('new-employee-code').value; if(n&&c.length===4) await addDoc(getColRef('employees'), {name:n, code:c}); document.getElementById('new-employee-name').value=''; document.getElementById('new-employee-code').value=''; };
 
+        // --- VIEW MANAGEMENT ---
         const views = { punch: document.getElementById('view-punch'), admin: document.getElementById('view-admin') };
         const tabs = { punch: document.getElementById('tab-punch'), admin: document.getElementById('tab-admin') };
         window.showView = (name) => { Object.keys(views).forEach(k => { views[k].classList.toggle('hidden', k!==name); const t = tabs[k]; const a = t.getAttribute('data-active-class').split(' '); const i = t.getAttribute('data-inactive-class').split(' '); t.classList.remove(...(k===name?i:a)); t.classList.add(...(k===name?a:i)); }); };
@@ -1252,61 +944,56 @@
 
         let currentPunchMode = null; let currentManualEmployee = null; let currentManualPunchDoc = null;
         let selectedHour = "00"; let selectedMinute = "00";
-        // TEMP Storage for Date/Time before Break selection
         let tempPunchDate = null;
 
-        // --- NEW: SCROLL WHEEL LOGIC ---
+        // ==========================================
+        //  NEW: QUARTER HOUR SCROLL WHEEL LOGIC
+        // ==========================================
+        const QUARTER_HOURS = ["00", "15", "30", "45"];
+        
         function populateWheels() {
             const hWheel = document.getElementById('hour-wheel');
             const mWheel = document.getElementById('minute-wheel');
-            
-            // REMOVED EXTRA PADDING DIVS HERE
-            // Padding items are handled by CSS padding-top/bottom 60px on the container
             
             let hHTML = ''; 
             for(let i=0; i<24; i++) {
                 hHTML += `<div class="wheel-item" data-val="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</div>`;
             }
             
+            // NEW: Only generate quarter hours
             let mHTML = '';
-            for(let i=0; i<60; i++) {
-                mHTML += `<div class="wheel-item" data-val="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</div>`;
-            }
+            QUARTER_HOURS.forEach(m => {
+                 mHTML += `<div class="wheel-item" data-val="${m}">${m}</div>`;
+            });
             
             hWheel.innerHTML = hHTML;
             mWheel.innerHTML = mHTML;
             
-            // Add Scroll Listeners to update state
             hWheel.addEventListener('scroll', () => handleScroll(hWheel, 'h'));
             mWheel.addEventListener('scroll', () => handleScroll(mWheel, 'm'));
         }
         
         function handleScroll(el, type) {
-            // Calculate center item
-            const itemHeight = 40;
-            // The container has 60px padding top, so center is scrollTop
+            const itemHeight = 50; // Updated CSS height
             const index = Math.round(el.scrollTop / itemHeight);
             
-            const val = String(index).padStart(2, '0');
-            
-            // Limit bounds
             if (type === 'h') {
-                if(index >= 0 && index < 24) selectedHour = val;
+                const val = String(Math.min(23, Math.max(0, index))).padStart(2, '0');
+                selectedHour = val;
             } else {
-                if(index >= 0 && index < 60) selectedMinute = val;
+                // Map index to quarter hour array
+                const safeIndex = Math.min(3, Math.max(0, index));
+                selectedMinute = QUARTER_HOURS[safeIndex];
             }
             
-            // Highlight styling logic (optional, for opacity change)
+            // Highlight logic
             Array.from(el.children).forEach((child, i) => {
-                if (child.classList.contains('wheel-item') && child.dataset.val) {
-                   // REMOVED -1 offset because pad divs are gone
-                   if (i === index) { 
-                       child.style.color = '#1d4ed8'; // blue-700
-                       child.style.transform = 'scale(1.1)';
-                   } else {
-                       child.style.color = '#94a3b8'; // gray-400
-                       child.style.transform = 'scale(1)';
-                   }
+                if (i === index) { 
+                    child.style.color = '#1e293b'; // Slate 800
+                    child.style.transform = 'scale(1.2)';
+                } else {
+                    child.style.color = '#cbd5e1'; // Slate 300
+                    child.style.transform = 'scale(1)';
                 }
             });
         }
@@ -1314,117 +1001,75 @@
         function scrollToTime(h, m) {
             const hWheel = document.getElementById('hour-wheel');
             const mWheel = document.getElementById('minute-wheel');
-            const itemHeight = 40;
+            const itemHeight = 50;
             
+            // Find closest quarter hour index
+            let mIndex = 0;
+            // Map "07" -> "00", "22" -> "15", etc.
+            const mInt = parseInt(m);
+            if (mInt >= 0 && mInt < 8) mIndex = 0; // 00
+            else if (mInt >= 8 && mInt < 23) mIndex = 1; // 15
+            else if (mInt >= 23 && mInt < 38) mIndex = 2; // 30
+            else mIndex = 3; // 45
+            
+            // Set scroll positions
             hWheel.scrollTop = parseInt(h) * itemHeight;
-            mWheel.scrollTop = parseInt(m) * itemHeight;
+            mWheel.scrollTop = mIndex * itemHeight;
             
             selectedHour = h;
-            selectedMinute = m;
+            selectedMinute = QUARTER_HOURS[mIndex];
+            
+            // Trigger highlight manually
+            handleScroll(hWheel, 'h');
+            handleScroll(mWheel, 'm');
         }
 
-        // --- NEW LOGIN FLOW ---
+        // --- LOGIC FLOW ---
         window.verifyCodeAndShowMenu = () => {
             const code = document.getElementById('employee-code').value;
-            const messageElement = document.getElementById('punch-message');
-            messageElement.textContent = "";
-            
             if(code.length !== 4) return;
-            
             const emp = employees.find(e => e.code === code);
+            if(!emp) return; // Add error feedback if needed
             
-            if(!emp) { 
-                messageElement.textContent = "Code inconnu"; 
-                messageElement.className = "text-center mt-4 text-sm font-medium h-6 text-red-600"; 
-                return; 
-            }
-            
-            // Valid Employee
             currentEmployee = emp;
-            
-            // Reset UI for Dashboard
             document.getElementById('dashboard-welcome').textContent = `Bonjour ${emp.name}`;
-            
-            // Check status to update Punch Button Text (In or Out)
             updatePunchButtonStatus(emp.code);
-            
-            // Switch Step
             document.getElementById('step-login').classList.add('hidden');
             document.getElementById('step-dashboard').classList.remove('hidden');
         };
 
-        // Helper to update button text based on status
         async function updatePunchButtonStatus(code) {
              const btnText = document.getElementById('btn-punch-text');
              const btnSub = document.getElementById('btn-punch-sub');
              const btnIcon = document.getElementById('btn-punch-icon');
+             const btnContainer = document.getElementById('btn-punch-action');
              
              try {
                 const s = await getDocs(query(getColRef('punches'), where('employeeCode', '==', code)));
                 const active = s.docs.filter(d => d.data().punchOutTime === null)[0];
                 
                 if (active) {
-                    btnText.textContent = "Dépointer (Départ)";
-                    btnSub.textContent = "Vous êtes actuellement présent";
-                    btnIcon.classList.remove('bg-gray-100', 'text-gray-600');
-                    btnIcon.classList.add('bg-orange-100', 'text-orange-600');
+                    // STATUS: WORKING (Need to Clock Out)
+                    btnText.textContent = "DÉPART";
+                    btnSub.textContent = "Cliquez pour finir";
+                    // Color Logic
+                    btnContainer.className = "p-8 rounded-xl shadow-lg border-4 text-left transition-all transform active:scale-95 flex items-center justify-between group border-orange-200 bg-orange-50 hover:bg-orange-100";
+                    btnIcon.className = "p-4 rounded-full mr-4 bg-orange-200 text-orange-700";
                 } else {
-                    btnText.textContent = "Pointer (Arrivée)";
-                    btnSub.textContent = "Vous n'êtes pas encore pointé";
-                    btnIcon.classList.remove('bg-orange-100', 'text-orange-600');
-                    btnIcon.classList.add('bg-green-100', 'text-green-600');
+                    // STATUS: NOT WORKING (Need to Clock In)
+                    btnText.textContent = "ARRIVÉE";
+                    btnSub.textContent = "Cliquez pour commencer";
+                    // Color Logic
+                    btnContainer.className = "p-8 rounded-xl shadow-lg border-4 text-left transition-all transform active:scale-95 flex items-center justify-between group border-green-200 bg-green-50 hover:bg-green-100";
+                    btnIcon.className = "p-4 rounded-full mr-4 bg-green-200 text-green-700";
                 }
-             } catch(e) {
-                 console.error(e);
-             }
+             } catch(e) {}
         }
 
-        window.onMenuPunch = () => {
-             // Reuse existing punch logic, but triggered from menu
-             if (!currentEmployee) return;
-             handlePunchLogic(currentEmployee);
-        };
+        window.onMenuPunch = () => { if (!currentEmployee) return; handlePunchLogic(currentEmployee); };
+        window.onMenuHistory = () => { if (!currentEmployee) return; document.getElementById('step-dashboard').classList.add('hidden'); document.getElementById('step-history').classList.remove('hidden'); renderEmployeeHistory(); };
+        window.resetToCodeEntry = () => { currentEmployee = null; document.getElementById('employee-code').value = ''; document.getElementById('step-login').classList.remove('hidden'); document.getElementById('step-dashboard').classList.add('hidden'); document.getElementById('step-history').classList.add('hidden'); };
 
-        window.onMenuHistory = () => {
-            if (!currentEmployee) return;
-            // Switch to History View
-            document.getElementById('step-dashboard').classList.add('hidden');
-            document.getElementById('step-history').classList.remove('hidden');
-            
-            // Initialiser le sélecteur au mois actuel s'il est vide
-            const picker = document.getElementById('employee-month-picker');
-            if (!picker.value) {
-                const today = new Date();
-                const yyyy = today.getFullYear();
-                const mm = String(today.getMonth() + 1).padStart(2, '0');
-                picker.value = `${yyyy}-${mm}`;
-            }
-            
-            // Rendre le tableau
-            renderEmployeeHistory();
-        };
-
-        window.renderEmployeeHistory = () => {
-            const picker = document.getElementById('employee-month-picker');
-            if (!picker.value || !currentEmployee) return;
-            
-            const [year, month] = picker.value.split('-').map(Number);
-            const tbody = document.getElementById('employee-history-body');
-            
-            // Clear needed since renderEmployeeRows appends
-            tbody.innerHTML = '';
-            renderEmployeeRows(tbody, currentEmployee, year, month);
-        };
-
-        window.resetToCodeEntry = () => {
-            currentEmployee = null;
-            document.getElementById('employee-code').value = '';
-            document.getElementById('step-login').classList.remove('hidden');
-            document.getElementById('step-dashboard').classList.add('hidden');
-            document.getElementById('step-history').classList.add('hidden');
-        };
-
-        // RENAMED old handlePunch to handlePunchLogic to be called by menu
         window.handlePunchLogic = async (emp) => {
             try {
                 const s = await getDocs(query(getColRef('punches'), where('employeeCode', '==', emp.code)));
@@ -1433,34 +1078,45 @@
             } catch(e) { console.error(e); }
         };
         
-        // Keep generic handlePunch for backward compatibility if button remains, but we changed the button onclick
-        window.handlePunch = () => { verifyCodeAndShowMenu(); };
-
+        // ==========================================
+        //  NEW: COLOR-CODED MODAL LOGIC
+        // ==========================================
         window.openManualTimeModal = (mode, employee, punchDoc) => {
             currentPunchMode = mode; currentManualEmployee = employee; currentManualPunchDoc = punchDoc;
             const modal = document.getElementById('manual-time-modal');
+            const header = document.getElementById('manual-time-header');
             const title = document.getElementById('manual-time-title');
+            const sub = document.getElementById('manual-time-subtitle');
+            const btnSetNow = document.getElementById('btn-set-now');
+            const btnConfirm = document.getElementById('btn-confirm-time');
+            
             const dateInput = document.getElementById('manual-punch-date');
+            
+            // Set Date Defaults (Night Shift Logic)
             const now = new Date();
-            
-            // --- NIGHT SHIFT LOGIC (Default Date) ---
-            // If it is between 00:00 and 03:00, default date is Yesterday
             const effectiveDate = new Date(now);
-            if (now.getHours() < 3) {
-                effectiveDate.setDate(effectiveDate.getDate() - 1);
-            }
-            
-            // FIX: Use local date string instead of UTC-based toISOString
+            if (now.getHours() < 3) effectiveDate.setDate(effectiveDate.getDate() - 1);
             dateInput.value = getLocalDateInputValue(effectiveDate);
             
-            // Scroll wheels to now (Real time)
-            const h = String(now.getHours()).padStart(2, '0');
-            const m = String(now.getMinutes()).padStart(2, '0');
-            // We need a small timeout to let modal render before scrolling
-            setTimeout(() => scrollToTime(h, m), 50);
+            // Set Time to Now (Rounded)
+            setTimeout(() => setManualToNow(), 50);
 
-            if (mode === 'IN') { title.textContent = `Bonjour ${employee.name} (Arrivée)`; }
-            else { title.textContent = `Au revoir ${employee.name} (Départ)`; }
+            // APPLY COLORS & TEXT
+            if (mode === 'IN') {
+                // GREEN THEME
+                header.className = "p-6 text-white text-center shadow-md z-20 relative bg-green-600";
+                title.textContent = "ARRIVÉE";
+                sub.textContent = "Début de journée";
+                btnSetNow.className = "w-full py-3 mt-4 text-sm font-bold uppercase tracking-wide rounded-lg transition-colors border-2 border-green-100 text-green-700 bg-green-50 hover:bg-green-100";
+                btnConfirm.className = "flex-1 py-4 text-white rounded-lg font-bold shadow-lg transform active:scale-95 transition-all text-lg bg-green-600 hover:bg-green-700";
+            } else {
+                // ORANGE/RED THEME
+                header.className = "p-6 text-white text-center shadow-md z-20 relative bg-orange-600";
+                title.textContent = "DÉPART";
+                sub.textContent = "Fin de journée";
+                btnSetNow.className = "w-full py-3 mt-4 text-sm font-bold uppercase tracking-wide rounded-lg transition-colors border-2 border-orange-100 text-orange-700 bg-orange-50 hover:bg-orange-100";
+                btnConfirm.className = "flex-1 py-4 text-white rounded-lg font-bold shadow-lg transform active:scale-95 transition-all text-lg bg-orange-600 hover:bg-orange-700";
+            }
             
             modal.classList.remove('hidden'); modal.classList.add('flex');
         };
@@ -1471,98 +1127,88 @@
         
         window.setManualToNow = () => { 
             const now = new Date(); 
-            // NIGHT SHIFT LOGIC (Button)
+            // Night shift date logic
             const effectiveDate = new Date(now);
-            if (now.getHours() < 3) {
-                effectiveDate.setDate(effectiveDate.getDate() - 1);
-            }
-            // FIX: Use local date
+            if (now.getHours() < 3) effectiveDate.setDate(effectiveDate.getDate() - 1);
             document.getElementById('manual-punch-date').value = getLocalDateInputValue(effectiveDate);
-            scrollToTime(String(now.getHours()).padStart(2,'0'), String(now.getMinutes()).padStart(2,'0')); 
+            
+            // Round to nearest quarter logic for initial view
+            const m = now.getMinutes();
+            let h = now.getHours();
+            let roundedM = 0;
+            
+            if (m < 8) roundedM = 0;
+            else if (m < 23) roundedM = 15;
+            else if (m < 38) roundedM = 30;
+            else if (m < 53) roundedM = 45;
+            else {
+                roundedM = 0;
+                h = (h + 1) % 24;
+            }
+            
+            scrollToTime(String(h).padStart(2,'0'), String(roundedM).padStart(2,'0')); 
         };
 
         window.confirmManualPunch = async () => {
             if (!currentManualEmployee) return;
             const dateStr = document.getElementById('manual-punch-date').value;
-            // Get time from global vars updated by scroll
+            // Use global selected vars from scroll wheel
             const timeStr = `${selectedHour}:${selectedMinute}`;
             if (!dateStr) { alert("Date requise."); return; }
             
-            // FIX: Manual construction of Date to avoid UTC shift issues
             const [y, mo, d] = dateStr.split('-').map(Number);
             const [h, mi] = timeStr.split(':').map(Number);
             const dateTime = new Date(y, mo - 1, d, h, mi);
             
-            // --- NIGHT SHIFT LOGIC (Timestamp Construction) ---
-            // If the user selected "Yesterday" (because h<3), but the Time is < 3am, 
-            // we need to add 1 day to the physical timestamp so it matches reality.
-            // Example: Today is Tuesday 01:00. DatePicker defaults to Monday. TimePicker is 01:00.
-            // dateTime becomes Monday 01:00. This is 24h ago.
-            // We want the timestamp to be Tuesday 01:00 (Reality).
-            if (h < 3) {
-                 dateTime.setDate(dateTime.getDate() + 1);
-            }
+            // Night shift adjustment
+            if (h < 3) dateTime.setDate(dateTime.getDate() + 1);
 
-            // TEMP SAVE for OUT
             tempPunchDate = dateTime;
 
             try {
                 if (currentPunchMode === 'IN') { 
-                    // Direct Save for IN
                     const docRef = await addDoc(getColRef('punches'), { employeeCode: currentManualEmployee.code, employeeName: currentManualEmployee.name, punchInTime: Timestamp.fromDate(dateTime), punchOutTime: null, breakDuration: 0 }); 
                     closeManualTimeModal();
                     resetToCodeEntry();
-                    showSuccessModal(`Bonjour ${currentManualEmployee.name} ! Pointage enregistré.`, docRef.id); 
+                    showSuccessModal(`ARRIVÉE ENREGISTRÉE : ${timeStr}`, docRef.id); 
                 }
                 else if (currentPunchMode === 'OUT' && currentManualPunchDoc) { 
-                    // NEW FLOW: Close time modal, Open break modal
                     closeManualTimeModal();
                     openBreakModal();
                 }
-                
-            } catch (e) { console.error("Erreur pointage manuel:", e); alert("Erreur: " + e.message); }
+            } catch (e) { console.error(e); alert("Erreur: " + e.message); }
         };
 
-        // NEW: Open Red Break Modal
         window.openBreakModal = () => {
             const modal = document.getElementById('break-selection-modal');
-            // Reset value
             document.getElementById('red-punch-break').value = 0;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         };
 
-        // NEW: Confirm Break and Final Save
         window.confirmBreak = async () => {
             const breakDuration = parseInt(document.getElementById('red-punch-break').value) || 0;
             const modal = document.getElementById('break-selection-modal');
-            
             try {
-                // Perform the Update
                 await updateDoc(currentManualPunchDoc.ref, { punchOutTime: Timestamp.fromDate(tempPunchDate), breakDuration: breakDuration });
-                
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                
                 resetToCodeEntry();
-                // FIX: Pass the document ID to showSuccessModal so Undo works for OUT punch too
-                showSuccessModal(`Au revoir ${currentManualEmployee.name} ! Dépointage enregistré.`, currentManualPunchDoc.id);
-
-            } catch(e) {
-                 console.error("Erreur break save:", e); 
-                 alert("Erreur: " + e.message); 
-            }
+                showSuccessModal(`DÉPART ENREGISTRÉ`, currentManualPunchDoc.id);
+            } catch(e) { console.error(e); alert("Erreur: " + e.message); }
         };
 
-        // DEPRECATED displayEmployeeStatus - Removed logic calling this
-        async function displayEmployeeStatus(emp) { /* Empty */ }
-
-        window.addEmployee = async () => { const n=document.getElementById('new-employee-name').value, c=document.getElementById('new-employee-code').value; if(n&&c.length===4) try{ await addDoc(getColRef('employees'), {name:n, code:c}); document.getElementById('new-employee-name').value=''; document.getElementById('new-employee-code').value=''; }catch(e){} };
-        window.deleteEmployee = async (id, name) => { if(confirm(`Del ${name}?`)) await deleteDoc(getDocRef('employees', id)); };
-        function renderEmployeeTable() { const b = document.getElementById('employee-table-body'); b.innerHTML=''; employees.forEach(e=>{ b.innerHTML+=`<tr class="hover:bg-gray-50"><td class="px-6 py-3">${e.name}</td><td class="px-6 py-3">${e.code}</td><td class="px-6 py-3"><button onclick="deleteEmployee('${e.id}','${e.name}')" class="text-red-600">Supprimer</button></td></tr>`; }); }
-        
-        // OLD renderPunchTable - not used for main display anymore, logic moved to preview
-        function renderPunchTable() { /* kept empty or remove */ }
+        // Service Worker registration logic kept intact...
+        if ('serviceWorker' in navigator) {
+            const swContent = `
+                const CACHE_NAME = 'pointage-v2';
+                const urlsToCache = ['./', 'index.html', 'https://cdn.tailwindcss.com', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap', 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'];
+                self.addEventListener('install', event => { self.skipWaiting(); event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache.map(url => new Request(url, {mode: 'no-cors'}))))); });
+                self.addEventListener('fetch', event => { event.respondWith(caches.match(event.request).then(response => response || fetch(event.request))); });
+            `;
+            const blob = new Blob([swContent], {type: 'text/javascript'});
+            window.addEventListener('load', () => { navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(e => console.log('SW Fail:', e)); });
+        }
     </script>
 </body>
 </html>
