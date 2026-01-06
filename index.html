@@ -595,8 +595,8 @@
     </div>
 
     <!-- PUNCH SUCCESS MODAL -->
-    <div id="punch-success-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-md">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden transform transition-all scale-105">
+    <div id="punch-success-modal" onclick="if(event.target === this) closeSuccessModal()" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-md cursor-pointer">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden transform transition-all scale-105 cursor-default">
             <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6">
                 <svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -705,6 +705,13 @@
         window.clearNum = (inputId) => { const input = document.getElementById(inputId); if(input) input.value = ''; };
 
         // --- SUCCESS MODAL ---
+        window.closeSuccessModal = () => {
+            const modal = document.getElementById('punch-success-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (window.successModalTimer) clearTimeout(window.successModalTimer);
+        };
+
         window.showSuccessModal = (message, punchId) => {
             const modal = document.getElementById('punch-success-modal');
             document.getElementById('punch-success-message').textContent = message;
@@ -716,7 +723,7 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             if (window.successModalTimer) clearTimeout(window.successModalTimer);
-            window.successModalTimer = setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 5000);
+            window.successModalTimer = setTimeout(() => closeSuccessModal(), 5000);
         }
 
         // --- UNDO ---
@@ -879,41 +886,41 @@
                 let currentRowIndex = 2; // Track current row in Excel (1-based index)
 
                 const pushWeekSummary = (weekNum) => {
-                     const endRowOfWeek = currentRowIndex - 1;
-                     const kRow = currentRowIndex; // The summary row index
-                     
-                     // Weekly Total Formula (Col K)
-                     const sumFormula = `SUM(K${startRowOfWeek}:K${endRowOfWeek})`;
-                     
-                     // OVERTIME FORMULAS (Based on Weekly Total in Column K)
-                     // Assuming thresholds: 35h, 39h, 43h
-                     // HS 10%: >35 to 39
-                     const formula10 = `MAX(0, MIN(K${kRow}, 39) - 35)`;
-                     // HS 20%: >39 to 43
-                     const formula20 = `MAX(0, MIN(K${kRow}, 43) - 39)`;
-                     // HS 50%: >43
-                     const formula50 = `MAX(0, K${kRow} - 43)`;
+                      const endRowOfWeek = currentRowIndex - 1;
+                      const kRow = currentRowIndex; // The summary row index
+                      
+                      // Weekly Total Formula (Col K)
+                      const sumFormula = `SUM(K${startRowOfWeek}:K${endRowOfWeek})`;
+                      
+                      // OVERTIME FORMULAS (Based on Weekly Total in Column K)
+                      // Assuming thresholds: 35h, 39h, 43h
+                      // HS 10%: >35 to 39
+                      const formula10 = `MAX(0, MIN(K${kRow}, 39) - 35)`;
+                      // HS 20%: >39 to 43
+                      const formula20 = `MAX(0, MIN(K${kRow}, 43) - 39)`;
+                      // HS 50%: >43
+                      const formula50 = `MAX(0, K${kRow} - 43)`;
 
-                     rows.push([
-                         {v: `TOTAL SEM ${weekNum}`, s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: '', s: weekSummaryStyle},
-                         {v: 'TOTAL HEBDO:', s: weekSummaryStyle},
-                         {f: sumFormula, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }}, // K: Weekly Total
-                         {f: formula10, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }},  // L: 10%
-                         {f: formula20, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }},  // M: 20%
-                         {f: formula50, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }}   // N: 50%
-                     ]);
-                     
-                     rows.push([null]); // Empty row spacer
-                     currentRowIndex += 2;
-                     startRowOfWeek = currentRowIndex;
+                      rows.push([
+                          {v: `TOTAL SEM ${weekNum}`, s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: '', s: weekSummaryStyle},
+                          {v: 'TOTAL HEBDO:', s: weekSummaryStyle},
+                          {f: sumFormula, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }}, // K: Weekly Total
+                          {f: formula10, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }},  // L: 10%
+                          {f: formula20, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }},  // M: 20%
+                          {f: formula50, t: 'n', s: { ...weekSummaryStyle, numFmt: '0.00' }}   // N: 50%
+                      ]);
+                      
+                      rows.push([null]); // Empty row spacer
+                      currentRowIndex += 2;
+                      startRowOfWeek = currentRowIndex;
                 };
                 
                 for (let d = 1; d <= daysInMonth; d++) {
