@@ -28,7 +28,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp, enableIndexedDbPersistence, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         window.firebase = {
             initializeApp,
@@ -52,7 +52,8 @@
             serverTimestamp,
             getDoc,
             Timestamp,
-            enableIndexedDbPersistence
+            enableIndexedDbPersistence,
+            writeBatch
         };
     </script>
     <style>
@@ -522,6 +523,30 @@
         </div>
     </div>
 
+    <!-- Edit Employee Modal (NEW) -->
+    <div id="edit-employee-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Modifier l'employé</h3>
+            <input type="hidden" id="edit-emp-id">
+            <input type="hidden" id="edit-emp-old-code">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                <input id="edit-emp-name" type="text" class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Code (4 chiffres)</label>
+                <input id="edit-emp-code" type="text" maxlength="4" class="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4)">
+                <p class="text-xs text-red-500 mt-1 italic">Attention : Changer le code mettra à jour tout l'historique.</p>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeEditEmployeeModal()" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
+                <button onclick="saveEditedEmployee()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
     <!-- NEW: Modal for Manual Time Entry with SCROLL WHEEL AND COLORS -->
     <div id="manual-time-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 backdrop-blur-sm">
         <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full transform transition-all scale-100 flex flex-col h-auto overflow-hidden">
@@ -654,7 +679,7 @@
 
     <script type="module">
         // ... (Imports remain the same) ...
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp, enableIndexedDbPersistence } = window.firebase;
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, getDocs, deleteDoc, orderBy, serverTimestamp, getDoc, Timestamp, enableIndexedDbPersistence, writeBatch } = window.firebase;
 
         let config = {};
         try { config = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); } catch(e) {}
@@ -834,7 +859,7 @@
             if (currentWeekNum !== null) pushWeekSummary(currentWeekNum);
         }
         
-        // --- UPDATED EXCEL EXPORT (DECIMAL HOURS + FORMULAS + HS COLS) ---
+        // --- UPDATED EXCEL EXPORT (DECIMAL HOURS + FORMULAS + HS COLS + MONTH TOTAL) ---
         window.exportToExcel = () => {
             const monthPicker = document.getElementById('admin-month-picker');
             const selectedMonthVal = monthPicker.value;
@@ -847,13 +872,12 @@
             // Styles
             const headerStyle = { font: { bold: true, color: { rgb: "000000" } }, fill: { fgColor: { rgb: "FFC000" } }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const cellStyle = { alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
-            // FIX: Use numFmt property for correct Excel formatting
             const timeStyle = { numFmt: 'hh:mm', alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const durationStyle = { numFmt: '[h]:mm', alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const decStyle = { numFmt: '0.00', font: { bold: true }, alignment: { horizontal: "center" }, border: { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} } };
             const weekSummaryStyle = { font: { bold: true, color: { rgb: "FF0000" } }, fill: { fgColor: { rgb: "FFFF00" } }, alignment: { horizontal: "center" }, border: { top: {style:'medium'}, bottom: {style:'medium'}, left: {style:'medium'}, right: {style:'medium'} } };
+            const monthTotalStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "0000FF" } }, alignment: { horizontal: "center" }, border: { top: {style:'thick'}, bottom: {style:'thick'}, left: {style:'thick'}, right: {style:'thick'} } };
             
-            // Helper to get Excel Time Value (fraction of day)
             const getExcelTime = (dateObj) => {
                 if(!dateObj) return "";
                 const h = dateObj.getHours();
@@ -884,21 +908,20 @@
                 let currentWeekNum = null; 
                 let startRowOfWeek = 2; // Data starts at row 2
                 let currentRowIndex = 2; // Track current row in Excel (1-based index)
+                let weeklyTotalRows = []; // Store row numbers of weekly totals
 
                 const pushWeekSummary = (weekNum) => {
                       const endRowOfWeek = currentRowIndex - 1;
                       const kRow = currentRowIndex; // The summary row index
                       
+                      weeklyTotalRows.push(kRow); // Keep track for Monthly Total
+
                       // Weekly Total Formula (Col K)
                       const sumFormula = `SUM(K${startRowOfWeek}:K${endRowOfWeek})`;
                       
                       // OVERTIME FORMULAS (Based on Weekly Total in Column K)
-                      // Assuming thresholds: 35h, 39h, 43h
-                      // HS 10%: >35 to 39
                       const formula10 = `MAX(0, MIN(K${kRow}, 39) - 35)`;
-                      // HS 20%: >39 to 43
                       const formula20 = `MAX(0, MIN(K${kRow}, 43) - 39)`;
-                      // HS 50%: >43
                       const formula50 = `MAX(0, K${kRow} - 43)`;
 
                       rows.push([
@@ -998,6 +1021,31 @@
                 }
                 
                 if (currentWeekNum !== null) { pushWeekSummary(currentWeekNum); }
+
+                // ADD MONTHLY TOTAL ROW
+                if (weeklyTotalRows.length > 0) {
+                    const sumK = weeklyTotalRows.map(r => `K${r}`).join('+');
+                    const sumL = weeklyTotalRows.map(r => `L${r}`).join('+');
+                    const sumM = weeklyTotalRows.map(r => `M${r}`).join('+');
+                    const sumN = weeklyTotalRows.map(r => `N${r}`).join('+');
+
+                    rows.push([
+                          {v: 'RÉCAPITULATIF MOIS', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: '', s: monthTotalStyle},
+                          {v: 'TOTAL:', s: monthTotalStyle},
+                          {f: sumK, t: 'n', s: { ...monthTotalStyle, numFmt: '0.00' }}, // K: Month Total
+                          {f: sumL, t: 'n', s: { ...monthTotalStyle, numFmt: '0.00' }}, // L: Month Total 10%
+                          {f: sumM, t: 'n', s: { ...monthTotalStyle, numFmt: '0.00' }}, // M: Month Total 20%
+                          {f: sumN, t: 'n', s: { ...monthTotalStyle, numFmt: '0.00' }}  // N: Month Total 50%
+                    ]);
+                }
                 
                 const ws = XLSX.utils.aoa_to_sheet(rows); 
                 ws['!cols'] = [{wch:10}, {wch:12}, {wch:12}, {wch:12}, {wch:8}, {wch:12}, {wch:12}, {wch:12}, {wch:8}, {wch:12}, {wch:15}, {wch:10}, {wch:10}, {wch:10}]; 
@@ -1013,12 +1061,81 @@
         // RESTORED: Employee Table Functions
         window.deleteEmployee = async (id, name) => { if(confirm(`Supprimer l'employé ${name} ?`)) await deleteDoc(getDocRef('employees', id)); };
 
+        // NEW: Edit Employee Modal Functions
+        window.openEditEmployeeModal = (id, name, code) => {
+            document.getElementById('edit-emp-id').value = id;
+            document.getElementById('edit-emp-name').value = name;
+            document.getElementById('edit-emp-code').value = code;
+            document.getElementById('edit-emp-old-code').value = code;
+            const modal = document.getElementById('edit-employee-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeEditEmployeeModal = () => {
+            const modal = document.getElementById('edit-employee-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.saveEditedEmployee = async () => {
+            const id = document.getElementById('edit-emp-id').value;
+            const newName = document.getElementById('edit-emp-name').value;
+            const newCode = document.getElementById('edit-emp-code').value;
+            const oldCode = document.getElementById('edit-emp-old-code').value;
+
+            if (!newName || newCode.length !== 4) {
+                alert("Nom requis et code à 4 chiffres requis.");
+                return;
+            }
+
+            try {
+                // 1. Update Employee Doc
+                await updateDoc(getDocRef('employees', id), { name: newName, code: newCode });
+
+                // 2. If Code or Name changed, update all historical punches (Batch)
+                if (newCode !== oldCode || true) { // Always update name too
+                     const batch = writeBatch(db);
+                     const q = query(getColRef('punches'), where('employeeCode', '==', oldCode));
+                     const snap = await getDocs(q);
+                     let count = 0;
+                     snap.forEach(doc => {
+                         batch.update(doc.ref, { employeeCode: newCode, employeeName: newName });
+                         count++;
+                     });
+                     if (count > 0) await batch.commit();
+                }
+
+                showToast("Employé modifié avec succès");
+                closeEditEmployeeModal();
+            } catch (e) {
+                console.error(e);
+                alert("Erreur lors de la modification: " + e.message);
+            }
+        };
+
         window.renderEmployeeTable = () => { 
             const b = document.getElementById('employee-table-body'); 
             if(!b) return; 
             b.innerHTML=''; 
             employees.forEach(e=>{ 
-                b.innerHTML+=`<tr class="hover:bg-gray-50"><td class="px-6 py-3 text-sm text-gray-900">${e.name}</td><td class="px-6 py-3 text-sm text-gray-500">${e.code}</td><td class="px-6 py-3 text-right"><button onclick="deleteEmployee('${e.id}','${e.name}')" class="text-red-600 hover:text-red-900 font-medium text-sm">Supprimer</button></td></tr>`; 
+                b.innerHTML+=`
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-3 text-sm text-gray-900">${e.name}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${e.code}</td>
+                    <td class="px-6 py-3 text-right">
+                        <button onclick="openEditEmployeeModal('${e.id}','${e.name}','${e.code}')" class="text-blue-600 hover:text-blue-900 font-medium text-sm mr-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                        <button onclick="deleteEmployee('${e.id}','${e.name}')" class="text-red-600 hover:text-red-900 font-medium text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                </tr>`; 
             }); 
         };
 
