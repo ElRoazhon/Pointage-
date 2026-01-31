@@ -494,9 +494,12 @@
                 <div class="flex flex-col md:flex-row md:items-end justify-between mb-4 border-b border-gray-200 pb-4 gap-4">
                     <h3 class="text-xl font-semibold text-gray-700">Aperçu Tableau Comptable</h3>
                     <div class="flex flex-col sm:flex-row items-center gap-3">
-                        <div class="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
-                            <span class="text-xs font-bold text-gray-500 uppercase px-2">Mois</span>
-                            <input type="month" id="admin-month-picker" class="bg-white border-none text-sm p-1 rounded focus:ring-0 text-gray-700 font-medium h-8" onchange="renderMonthPreview()">
+                        <div class="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200 shadow-sm">
+                            <select id="admin-preview-employee" class="bg-transparent border-none text-sm py-1 pl-2 pr-8 rounded focus:ring-0 text-gray-700 font-bold h-8 outline-none cursor-pointer" onchange="renderMonthPreview()">
+                                <option value="">Tous les employés</option>
+                            </select>
+                            <div class="w-px h-5 bg-gray-300 mx-2"></div>
+                            <input type="month" id="admin-month-picker" class="bg-transparent border-none text-sm p-1 rounded focus:ring-0 text-gray-700 font-medium h-8 outline-none cursor-pointer" onchange="renderMonthPreview()">
                         </div>
                         <button onclick="exportToExcel()" class="btn-primary bg-green-600 text-white font-bold py-1.5 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center shadow-sm text-sm h-10">Excel</button>
                     </div>
@@ -831,7 +834,35 @@
         function startDataListeners() {
             if (!isAuthReady) return;
             onSnapshot(getDocRef('settings', 'branding'), (doc) => { if(doc.exists() && doc.data().logoBase64) { document.getElementById('app-logo').src = doc.data().logoBase64; document.getElementById('app-logo').style.display='block'; document.getElementById('app-logo').classList.remove('hidden'); document.getElementById('fallback-logo-icon').classList.add('hidden'); } });
-            onSnapshot(getColRef('employees'), (snapshot) => { employees = []; const s1 = document.getElementById('admin-correction-employee'); const s2 = document.getElementById('edit-punch-employee'); s1.innerHTML = '<option value="">-- Tous les employés --</option>'; s2.innerHTML = ''; snapshot.forEach(doc => { const d = { id: doc.id, ...doc.data() }; employees.push(d); const o1 = document.createElement('option'); o1.value = d.code; o1.textContent = d.name; s1.appendChild(o1); const o2 = document.createElement('option'); o2.value = d.code; o2.textContent = d.name; s2.appendChild(o2); }); renderEmployeeTable(); });
+            onSnapshot(getColRef('employees'), (snapshot) => { 
+                employees = []; 
+                const s1 = document.getElementById('admin-correction-employee'); 
+                const s2 = document.getElementById('edit-punch-employee'); 
+                const s3 = document.getElementById('admin-preview-employee'); // NEW
+                
+                s1.innerHTML = '<option value="">-- Tous les employés --</option>'; 
+                s2.innerHTML = ''; 
+                if(s3) {
+                     // Keep selected value if re-rendering
+                     const currentVal = s3.value;
+                     s3.innerHTML = '<option value="">Tous les employés</option>';
+                     // We will restore value after loop
+                }
+
+                snapshot.forEach(doc => { 
+                    const d = { id: doc.id, ...doc.data() }; 
+                    employees.push(d); 
+                    const o1 = document.createElement('option'); o1.value = d.code; o1.textContent = d.name; s1.appendChild(o1); 
+                    const o2 = document.createElement('option'); o2.value = d.code; o2.textContent = d.name; s2.appendChild(o2); 
+                    
+                    // NEW: Populate preview filter
+                    if(s3) {
+                        const o3 = document.createElement('option'); o3.value = d.code; o3.textContent = d.name; s3.appendChild(o3);
+                    }
+                }); 
+                renderEmployeeTable(); 
+                renderMonthPreview(); // Refresh preview logic
+            });
             onSnapshot(query(getColRef('punches'), orderBy('punchInTime', 'desc')), (snapshot) => { punches = []; snapshot.forEach(doc => { punches.push({ id: doc.id, ...doc.data() }); }); loadCorrectionData(); renderMonthPreview(); });
         }
         function handleFirebaseError(error) { if (navigator.onLine === false) { document.getElementById('connection-status').textContent = "Hors ligne (Local)"; } }
@@ -862,9 +893,18 @@
         // --- UPDATED EXCEL EXPORT (DECIMAL HOURS + FORMULAS + HS COLS + MONTH TOTAL) ---
         window.exportToExcel = () => {
             const monthPicker = document.getElementById('admin-month-picker');
+            const empPicker = document.getElementById('admin-preview-employee'); // NEW
+            
             const selectedMonthVal = monthPicker.value;
             if (!selectedMonthVal) { alert("Veuillez sélectionner un mois."); return; }
             if (employees.length === 0 && punches.length === 0) { alert('Aucune donnée.'); return; }
+            
+            // Filter employees based on selection
+            const selectedCode = empPicker ? empPicker.value : "";
+            const targetEmployees = selectedCode ? employees.filter(e => e.code === selectedCode) : employees;
+
+            if (targetEmployees.length === 0) { alert("Aucun employé trouvé pour cette sélection."); return; }
+
             const [selYear, selMonth] = selectedMonthVal.split('-').map(Number);
             const daysInMonth = new Date(selYear, selMonth, 0).getDate();
             const wb = XLSX.utils.book_new();
@@ -885,7 +925,7 @@
                 return (h / 24) + (m / 1440);
             };
 
-            employees.forEach(emp => {
+            targetEmployees.forEach(emp => {
                 const rows = [];
                 // Header (Row 1) with HS Columns
                 rows.push([
@@ -993,10 +1033,13 @@
 
                     // EXCEL FORMULAS
                     const r = currentRowIndex;
-                    // Total M (Time Format): (Dep - Arr) - (Pause_min / 1440)
-                    const formulaTotalM = `IF(AND(D${r}<>"",C${r}<>""),D${r}-C${r}-(E${r}/1440),0)`;
-                    // Total S (Time Format)
-                    const formulaTotalS = `IF(AND(H${r}<>"",G${r}<>""),H${r}-G${r}-(I${r}/1440),0)`;
+                    // Total M (Time Format): (Dep - Arr + (Dep < Arr)) - (Pause_min / 1440)
+                    // Cette formule gère le passage à minuit : si D < C (ex: 02:00 < 16:00), elle ajoute 1 (24h)
+                    const formulaTotalM = `IF(AND(D${r}<>"",C${r}<>""), (D${r}-C${r}+(D${r}<C${r})) - (E${r}/1440), 0)`;
+                    
+                    // Total S (Time Format) - Same logic for Second shift
+                    const formulaTotalS = `IF(AND(H${r}<>"",G${r}<>""), (H${r}-G${r}+(H${r}<G${r})) - (I${r}/1440), 0)`;
+                    
                     // Total Decimal (Number Format): (TotalM + TotalS) * 24
                     const formulaTotalDec = `(F${r}+J${r})*24`;
 
@@ -1055,7 +1098,32 @@
             XLSX.writeFile(wb, `Pointage_Calculs_Auto_${selectedMonthVal}.xlsx`);
         };
 
-        window.renderMonthPreview = () => { const mp = document.getElementById('admin-month-picker'); const c = document.getElementById('preview-records-container'); if(!mp.value) return; c.innerHTML = ''; const [y, m] = mp.value.split('-').map(Number); employees.forEach(emp => { const card = document.createElement('div'); card.className = "mb-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"; card.innerHTML = `<div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center"><span class="font-bold text-gray-700 text-lg">${emp.name}</span><span class="text-xs font-mono bg-white px-2 py-1 rounded border">${emp.code}</span></div><div class="overflow-x-auto"><table class="min-w-full border-collapse"><thead class="bg-gray-50 border-b border-gray-200"><tr><th class="preview-header">Sem</th><th class="preview-header">Date</th><th class="preview-header">Arr M</th><th class="preview-header">Dep M</th><th class="preview-header">Pau M</th><th class="preview-header">Tot M</th><th class="preview-header">Arr S</th><th class="preview-header">Dep S</th><th class="preview-header">Pau S</th><th class="preview-header">Tot S</th><th class="preview-header">Total</th></tr></thead><tbody class="bg-white"></tbody></table></div>`; c.appendChild(card); renderEmployeeRows(card.querySelector('tbody'), emp, y, m); }); };
+        window.renderMonthPreview = () => { 
+            const mp = document.getElementById('admin-month-picker'); 
+            const ep = document.getElementById('admin-preview-employee'); // NEW
+            const c = document.getElementById('preview-records-container'); 
+            
+            if(!mp.value) return; 
+            c.innerHTML = ''; 
+            const [y, m] = mp.value.split('-').map(Number); 
+            
+            // Filter Logic
+            const selectedCode = ep ? ep.value : "";
+            const filteredEmployees = selectedCode ? employees.filter(e => e.code === selectedCode) : employees;
+
+            if(filteredEmployees.length === 0) {
+                c.innerHTML = '<div class="text-center text-gray-500 py-8 italic">Aucun employé sélectionné ou trouvé.</div>';
+                return;
+            }
+
+            filteredEmployees.forEach(emp => { 
+                const card = document.createElement('div'); 
+                card.className = "mb-8 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"; 
+                card.innerHTML = `<div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center"><span class="font-bold text-gray-700 text-lg">${emp.name}</span><span class="text-xs font-mono bg-white px-2 py-1 rounded border">${emp.code}</span></div><div class="overflow-x-auto"><table class="min-w-full border-collapse"><thead class="bg-gray-50 border-b border-gray-200"><tr><th class="preview-header">Sem</th><th class="preview-header">Date</th><th class="preview-header">Arr M</th><th class="preview-header">Dep M</th><th class="preview-header">Pau M</th><th class="preview-header">Tot M</th><th class="preview-header">Arr S</th><th class="preview-header">Dep S</th><th class="preview-header">Pau S</th><th class="preview-header">Tot S</th><th class="preview-header">Total</th></tr></thead><tbody class="bg-white"></tbody></table></div>`; 
+                c.appendChild(card); 
+                renderEmployeeRows(card.querySelector('tbody'), emp, y, m); 
+            }); 
+        };
 
         // --- ADMIN HELPERS ---
         // RESTORED: Employee Table Functions
