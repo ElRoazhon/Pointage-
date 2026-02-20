@@ -564,7 +564,9 @@
                 <!-- Date Display -->
                 <div class="mb-4 text-center">
                     <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Date du pointage</label>
-                    <input type="date" id="manual-punch-date" class="w-full p-3 border-b-2 border-gray-200 text-center text-xl font-bold text-gray-700 focus:border-blue-500 outline-none transition-colors bg-transparent">
+                    <!-- Le champ est maintenant en lecture seule (readonly) et non cliquable (pointer-events-none) -->
+                    <input type="date" id="manual-punch-date" readonly tabindex="-1" class="w-full p-3 border-b-2 border-gray-200 text-center text-xl font-bold text-gray-500 outline-none bg-transparent pointer-events-none cursor-not-allowed opacity-90">
+                    <p class="text-[10px] text-gray-400 mt-2 italic">La date est calculée automatiquement (même après minuit).</p>
                 </div>
 
                 <!-- iOS STYLE SCROLL PICKER -->
