@@ -393,9 +393,9 @@
                         </button>
                     </div>
 
-                    <button onclick="resetToCodeEntry()" class="w-full mt-8 py-4 text-gray-500 font-bold hover:text-red-600 flex items-center justify-center bg-gray-50 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                    <button onclick="resetToCodeEntry()" class="w-full mt-8 py-4 text-white font-bold hover:bg-red-700 flex items-center justify-center bg-red-600 shadow-lg rounded-xl transition-colors border-2 border-red-700 uppercase tracking-wide">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         DÉCONNEXION
                     </button>
@@ -1595,7 +1595,10 @@
                 if (currentPunchMode === 'IN') { 
                     const docRef = await addDoc(getColRef('punches'), { employeeCode: currentManualEmployee.code, employeeName: currentManualEmployee.name, punchInTime: Timestamp.fromDate(dateTime), punchOutTime: null, breakDuration: 0 }); 
                     closeManualTimeModal();
-                    resetToCodeEntry();
+                    
+                    // On met à jour le statut du bouton pour afficher "DÉPART" sans déconnecter l'utilisateur
+                    updatePunchButtonStatus(currentManualEmployee.code);
+                    
                     showSuccessModal(`ARRIVÉE ENREGISTRÉE : ${timeStr}`, docRef.id); 
                 }
                 else if (currentPunchMode === 'OUT' && currentManualPunchDoc) { 
